@@ -41,7 +41,7 @@ def mel_spectrogram_analysis(file_path: str) -> tuple[float, str]:
     mid_band = mel_db[32:96, :].mean()
     high_band = mel_db[96:, :].mean()
 
-    score = 0.4  # Start slightly below neutral
+    score = 0.3  # Start below neutral
     parts = []
 
     # Low temporal roughness = suspiciously smooth
@@ -56,6 +56,11 @@ def mel_spectrogram_analysis(file_path: str) -> tuple[float, str]:
         parts.append(
             f"Natural spectral variation detected (roughness={temporal_roughness:.2f})."
         )
+    else:
+        score -= 0.05
+        parts.append(
+            f"Moderate spectral transitions (roughness={temporal_roughness:.2f})."
+        )
 
     # Very clean noise floor = likely synthetic
     if noise_floor > -60:
@@ -67,6 +72,9 @@ def mel_spectrogram_analysis(file_path: str) -> tuple[float, str]:
     elif noise_floor < -75:
         score -= 0.1
         parts.append(f"Natural noise floor present ({noise_floor:.1f} dB).")
+    else:
+        score -= 0.05
+        parts.append(f"Normal noise floor ({noise_floor:.1f} dB).")
 
     # Low spectral centroid variation = monotonous = AI-like
     if centroid_var < 0.15:

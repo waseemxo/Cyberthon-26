@@ -85,12 +85,12 @@ def extract_image_metadata(file_bytes: bytes) -> tuple[float, str, list[str]]:
         provenance_gaps.append("No C2PA content credentials found")
 
     # 4. Score calculation
-    score = 0.5  # Start neutral
+    score = 0.4  # Start slightly below neutral
 
     if not exif_data:
-        score += 0.15
+        score += 0.1  # Missing EXIF is common for web images, not strongly suspicious
     elif not has_camera_info:
-        score += 0.1
+        score += 0.05
 
     if ai_indicators:
         score += 0.3
@@ -145,7 +145,7 @@ def extract_audio_metadata(file_bytes: bytes, file_name: str) -> tuple[float, st
             f"TTS/AI generation markers found in file: {', '.join(found_markers)}."
         )
     else:
-        score = 0.4
+        score = 0.3
         findings.append("No AI generation markers found in file container.")
 
     # Check for standard recording device metadata
@@ -191,7 +191,7 @@ def extract_video_metadata(file_bytes: bytes, file_name: str) -> tuple[float, st
         score = 0.85
         findings.append(f"AI video generation markers found: {', '.join(found)}.")
     else:
-        score = 0.4
+        score = 0.3
         findings.append("No AI generation markers found in video container.")
 
     # Camera/device metadata in video

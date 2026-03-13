@@ -109,7 +109,7 @@ class ImageAnalyzer(BaseAnalyzer):
         channel_noise_std = np.std(channel_noises)
 
         # AI images tend to have very uniform noise across all channels
-        score = 0.4
+        score = 0.3
         parts = []
 
         if channel_noise_std < 0.5:
@@ -123,7 +123,7 @@ class ImageAnalyzer(BaseAnalyzer):
                 f"Moderate noise channel uniformity (std={channel_noise_std:.3f})."
             )
         else:
-            score -= 0.1
+            score -= 0.15
             parts.append(
                 f"Natural noise variation across channels (std={channel_noise_std:.3f}). "
                 "Consistent with camera sensor noise."
@@ -134,6 +134,12 @@ class ImageAnalyzer(BaseAnalyzer):
             parts.append(
                 f"Very low pixel noise ({noise_avg:.2f}). "
                 "Image may be synthetically generated or heavily processed."
+            )
+        elif noise_avg > 8.0:
+            score -= 0.1
+            parts.append(
+                f"Natural pixel noise level ({noise_avg:.2f}). "
+                "Consistent with camera sensor characteristics."
             )
 
         score = max(0.0, min(1.0, score))
@@ -162,7 +168,7 @@ class ImageAnalyzer(BaseAnalyzer):
 
         avg_smoothness = np.mean(smoothness_scores)
 
-        score = 0.4
+        score = 0.3
         parts = []
 
         if avg_gaps > 50:
@@ -170,6 +176,12 @@ class ImageAnalyzer(BaseAnalyzer):
             parts.append(
                 f"Significant histogram gaps ({avg_gaps:.0f} avg missing values). "
                 "May indicate color quantization from generation."
+            )
+        elif avg_gaps < 10:
+            score -= 0.1
+            parts.append(
+                f"Full color value range utilized ({avg_gaps:.0f} avg gaps). "
+                "Consistent with natural photography."
             )
 
         if avg_smoothness < 0.0002:

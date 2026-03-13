@@ -108,14 +108,19 @@ def build_report(
     provenance_gaps: list[str],
 ) -> ForensicReport:
     """Build a complete ForensicReport from analysis results."""
-    # Weighted average score — suspicious techniques get more weight
+    # Weighted average score — suspicious techniques get more weight,
+    # and EXIF/metadata techniques carry extra forensic importance
+    EXIF_KEYWORDS = ("exif", "metadata")
+
     if not breakdown:
         avg_score = 0.5
     else:
         total_weight = 0
         weighted_sum = 0
         for t in breakdown:
-            weight = 1.5 if t.result == "SUSPICIOUS" else 1.0
+            name_lower = t.technique.lower()
+            is_exif = any(kw in name_lower for kw in EXIF_KEYWORDS)
+            weight = 2.0 if is_exif else (1.5 if t.result == "SUSPICIOUS" else (1.3 if t.result == "CLEAN" else 1.0))
             weighted_sum += t.score * weight
             total_weight += weight
         avg_score = weighted_sum / total_weight

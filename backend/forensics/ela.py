@@ -81,7 +81,7 @@ def error_level_analysis(file_bytes: bytes, quality: int = 90) -> tuple[float, s
             "Image may have been generated or heavily processed."
         )
     else:
-        score = 0.35
+        score = 0.2
         explanation = (
             f"Normal error level distribution (mean={ela_mean:.2f}, "
             f"std={ela_std:.2f}, block std={block_std:.2f}). "

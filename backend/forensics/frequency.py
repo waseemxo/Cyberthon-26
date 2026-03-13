@@ -89,11 +89,15 @@ def fft_analysis(file_bytes: bytes) -> tuple[float, str]:
 
     if smoothness > 0.6:
         score += 0.2  # Noisy radial profile = possible AI artifacts
+    elif smoothness < 0.35:
+        score -= 0.1  # Very smooth falloff = natural image characteristic
 
     score += min(grid_score, 0.35)
 
     if hf_ratio < 0.1:
         score += 0.15  # Suspiciously low high-frequency content
+    elif hf_ratio > 0.3:
+        score -= 0.1  # Healthy high-frequency content = natural image
 
     score = max(0.0, min(1.0, score))
 
@@ -108,10 +112,20 @@ def fft_analysis(file_bytes: bytes) -> tuple[float, str]:
             f"Non-smooth radial energy profile (oscillation index: {smoothness:.2f}) "
             "suggests synthetic frequency patterns."
         )
+    elif smoothness < 0.35:
+        parts.append(
+            f"Smooth radial energy falloff (oscillation index: {smoothness:.2f}), "
+            "consistent with natural image frequency distribution."
+        )
     if hf_ratio < 0.1:
         parts.append(
             f"Abnormally low high-frequency energy ratio ({hf_ratio:.3f}), "
             "possibly indicating AI upscaling or generation smoothing."
+        )
+    elif hf_ratio > 0.3:
+        parts.append(
+            f"Healthy high-frequency energy ratio ({hf_ratio:.3f}), "
+            "consistent with natural image detail."
         )
     if not parts:
         parts.append(

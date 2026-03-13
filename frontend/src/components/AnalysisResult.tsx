@@ -618,7 +618,11 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
                           RESULT: <span style={{ color }} className="font-bold">{technique.result}</span>
                         </span>
                         <span>
-                          WEIGHT: <span className="font-bold text-text-secondary">{technique.result === 'SUSPICIOUS' ? '1.5x' : '1.0x'}</span>
+                          WEIGHT: <span className="font-bold text-text-secondary">{
+                          technique.technique.toLowerCase().includes('exif') || technique.technique.toLowerCase().includes('metadata')
+                            ? '2.0x'
+                            : technique.result === 'SUSPICIOUS' ? '1.5x' : '1.0x'
+                        }</span>
                         </span>
                       </div>
                     </div>

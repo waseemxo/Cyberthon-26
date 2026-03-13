@@ -68,16 +68,19 @@ def temporal_consistency_analysis(file_path: str) -> tuple[float, str]:
     edge_std = np.std(edge_counts) / (np.mean(edge_counts) + 1e-8)
 
     # Scoring
-    score = 0.4
+    score = 0.3
     parts = []
 
     # High brightness flicker = AI artifact
     if brightness_std > 5.0:
-        score += 0.2
+        score += 0.25
         parts.append(
             f"Brightness flickering detected between frames (std={brightness_std:.2f}). "
             "Inconsistent lighting is a common AI video artifact."
         )
+    elif brightness_std < 1.5:
+        score -= 0.1
+        parts.append(f"Very stable brightness across frames (std={brightness_std:.2f}), consistent with real footage.")
     else:
         parts.append(f"Stable brightness across frames (std={brightness_std:.2f}).")
 
@@ -94,14 +97,20 @@ def temporal_consistency_analysis(file_path: str) -> tuple[float, str]:
             f"Erratic inter-frame changes (CV={diff_cv:.3f}). "
             "May indicate frame generation inconsistencies."
         )
+    else:
+        score -= 0.05
+        parts.append(f"Natural inter-frame variation (CV={diff_cv:.3f}).")
 
     # Edge instability
     if edge_std > 0.3:
-        score += 0.1
+        score += 0.15
         parts.append(
             f"Edge instability across frames (CV={edge_std:.3f}). "
             "AI-generated video often has wavering edge definition."
         )
+    elif edge_std < 0.1:
+        score -= 0.05
+        parts.append(f"Consistent edge definition (CV={edge_std:.3f}), typical of real video.")
 
     score = max(0.0, min(1.0, score))
     return score, " ".join(parts)
@@ -150,24 +159,30 @@ def face_landmark_analysis(file_path: str) -> tuple[float, str]:
     # 3. Face detection consistency
     detection_rate = frames_with_faces / len(frames)
 
-    score = 0.4
+    score = 0.3
     parts = []
 
     # Inconsistent face sizes = possible deepfake artifact
     if size_cv > 0.3:
-        score += 0.15
+        score += 0.2
         parts.append(
             f"Face size fluctuation detected (CV={size_cv:.3f}). "
             "May indicate face replacement artifacts."
         )
+    elif size_cv < 0.1:
+        score -= 0.1
+        parts.append(f"Consistent face sizing (CV={size_cv:.3f}), typical of real footage.")
 
     # High position jitter with low overall motion = deepfake
     if pos_jitter > 0.8:
-        score += 0.15
+        score += 0.2
         parts.append(
             f"Erratic face position/tracking (jitter CV={pos_jitter:.3f}). "
             "Deepfakes often show unstable face alignment."
         )
+    elif pos_jitter < 0.3:
+        score -= 0.05
+        parts.append(f"Stable face tracking (jitter CV={pos_jitter:.3f}).")
 
     # Inconsistent face detection (face disappears in some frames)
     if detection_rate < 0.7 and detection_rate > 0.3:
@@ -177,6 +192,7 @@ def face_landmark_analysis(file_path: str) -> tuple[float, str]:
             "Face may degrade in certain frames."
         )
     elif detection_rate >= 0.9:
+        score -= 0.05
         parts.append(f"Consistent face detection ({detection_rate:.0%} of frames).")
 
     if not parts:
@@ -216,22 +232,25 @@ def optical_flow_analysis(file_path: str) -> tuple[float, str]:
     mag_cv = np.std(mag_array) / (np.mean(mag_array) + 1e-8)
     angle_consistency = np.mean(angle_std_array)
 
-    score = 0.4
+    score = 0.3
     parts = []
 
     # Very uniform flow magnitude = possibly synthetic motion
     if mag_cv < 0.2 and np.mean(mag_array) > 0.5:
-        score += 0.2
+        score += 0.25
         parts.append(
             f"Unnaturally uniform motion flow (magnitude CV={mag_cv:.3f}). "
             "AI-generated video often has mechanical, repetitive motion."
         )
     elif mag_cv > 1.5:
-        score += 0.1
+        score += 0.15
         parts.append(
             f"Erratic motion flow (CV={mag_cv:.3f}). "
             "May indicate frame generation inconsistencies."
         )
+    elif mag_cv > 0.4:
+        score -= 0.1
+        parts.append(f"Natural motion flow variation (CV={mag_cv:.3f}).")
 
     # Low angle diversity = motion in only one direction (suspicious for AI)
     if angle_consistency < 0.8:
@@ -240,6 +259,9 @@ def optical_flow_analysis(file_path: str) -> tuple[float, str]:
             f"Low flow direction diversity (angle std={angle_consistency:.3f}). "
             "Motion appears constrained."
         )
+    elif angle_consistency > 1.2:
+        score -= 0.05
+        parts.append(f"Good flow direction diversity (angle std={angle_consistency:.3f}).")
 
     if not parts:
         parts.append(
