@@ -4,6 +4,7 @@ import type { ForensicReport, SessionHistoryItem } from '../types';
 const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
+  timeout: 120_000, // 2 minutes — analysis with Gemini can be slow
 });
 
 export async function analyzeFile(

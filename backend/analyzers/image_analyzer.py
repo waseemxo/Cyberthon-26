@@ -2,6 +2,7 @@
 
 import asyncio
 import io
+import logging
 import numpy as np
 from PIL import Image
 
@@ -10,6 +11,17 @@ from models.schemas import AnalysisTechnique
 from forensics.metadata import extract_image_metadata
 from forensics.frequency import fft_analysis
 from forensics.ela import error_level_analysis
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_call(fn, *args) -> tuple[tuple | None, str | None]:
+    """Run *fn* and return (result, None) on success or (None, error_msg) on failure."""
+    try:
+        return fn(*args), None
+    except Exception as e:
+        logger.exception("Image technique %s failed", fn.__name__)
+        return None, str(e)
 
 
 class ImageAnalyzer(BaseAnalyzer):
@@ -21,82 +33,78 @@ class ImageAnalyzer(BaseAnalyzer):
         results: list[AnalysisTechnique] = []
 
         # 1. Metadata inspection (fast, no thread pool needed)
-        meta_score, meta_expl, meta_gaps = extract_image_metadata(file_bytes)
-        self._provenance_gaps = meta_gaps
-        results.append(
-            AnalysisTechnique(
-                technique="EXIF & Metadata Inspection",
-                result=self.score_to_result(meta_score),
-                score=round(meta_score, 3),
-                explanation=meta_expl,
-            )
-        )
-
-        # Run CPU-heavy analyses in thread pool
-        def _run_image_analyses():
-            return (
-                fft_analysis(file_bytes),
-                error_level_analysis(file_bytes),
-                self._pixel_statistics(file_bytes),
-                self._color_histogram_analysis(file_bytes),
-            )
-
-        fft_result, ela_result, pixel_result, hist_result = await asyncio.to_thread(_run_image_analyses)
-
-        # 2. Frequency domain analysis (FFT)
-        results.append(
-            AnalysisTechnique(
-                technique="Frequency Domain Analysis (FFT)",
-                result=self.score_to_result(fft_result[0]),
-                score=round(fft_result[0], 3),
-                explanation=fft_result[1],
-            )
-        )
-
-        # 3. Error Level Analysis
-        results.append(
-            AnalysisTechnique(
-                technique="Error Level Analysis (ELA)",
-                result=self.score_to_result(ela_result[0]),
-                score=round(ela_result[0], 3),
-                explanation=ela_result[1],
-            )
-        )
-
-        # 4. Pixel-level statistical analysis
-        results.append(
-            AnalysisTechnique(
-                technique="Pixel Statistical Analysis",
-                result=self.score_to_result(pixel_result[0]),
-                score=round(pixel_result[0], 3),
-                explanation=pixel_result[1],
-            )
-        )
-
-        # 5. Color histogram analysis
-        results.append(
-            AnalysisTechnique(
-                technique="Color Histogram Analysis",
-                result=self.score_to_result(hist_result[0]),
-                score=round(hist_result[0], 3),
-                explanation=hist_result[1],
-            )
-        )
-
-        # ── Gemini Multimodal Image Analysis ──
-        from forensics.gemini_analyzer import analyze_image as gemini_analyze_image
-
-        gemini_result = await asyncio.to_thread(gemini_analyze_image, file_bytes)
-        if gemini_result is not None:
-            gemini_score, gemini_explanation = gemini_result
+        try:
+            meta_score, meta_expl, meta_gaps = extract_image_metadata(file_bytes)
+            self._provenance_gaps = meta_gaps
             results.append(
                 AnalysisTechnique(
-                    technique="Gemini Multimodal Analysis",
-                    result=self.score_to_result(gemini_score),
-                    score=round(gemini_score, 3),
-                    explanation=gemini_explanation,
+                    technique="EXIF & Metadata Inspection",
+                    result=self.score_to_result(meta_score),
+                    score=round(meta_score, 3),
+                    explanation=meta_expl,
                 )
             )
+        except Exception as e:
+            logger.exception("Image metadata extraction failed")
+            results.append(
+                AnalysisTechnique(
+                    technique="EXIF & Metadata Inspection",
+                    result=self.score_to_result(0.5),
+                    score=0.5,
+                    explanation=f"Metadata extraction failed: {e}",
+                )
+            )
+
+        # Run CPU-heavy analyses in thread pool with per-technique isolation
+        technique_map = [
+            ("Frequency Domain Analysis (FFT)", fft_analysis),
+            ("Error Level Analysis (ELA)", error_level_analysis),
+            ("Pixel Statistical Analysis", self._pixel_statistics),
+            ("Color Histogram Analysis", self._color_histogram_analysis),
+        ]
+
+        def _run_image_analyses():
+            return [_safe_call(fn, file_bytes) for _, fn in technique_map]
+
+        safe_results = await asyncio.to_thread(_run_image_analyses)
+
+        for (technique_name, _), (result, error) in zip(technique_map, safe_results):
+            if result is not None:
+                results.append(
+                    AnalysisTechnique(
+                        technique=technique_name,
+                        result=self.score_to_result(result[0]),
+                        score=round(result[0], 3),
+                        explanation=result[1],
+                    )
+                )
+            else:
+                results.append(
+                    AnalysisTechnique(
+                        technique=technique_name,
+                        result=self.score_to_result(0.5),
+                        score=0.5,
+                        explanation=f"Analysis failed: {error}",
+                    )
+                )
+
+        # ── Gemini Multimodal Image Analysis ──
+        try:
+            from forensics.gemini_analyzer import analyze_image as gemini_analyze_image
+
+            gemini_result = await asyncio.to_thread(gemini_analyze_image, file_bytes)
+            if gemini_result is not None:
+                gemini_score, gemini_explanation = gemini_result
+                results.append(
+                    AnalysisTechnique(
+                        technique="Gemini Multimodal Analysis",
+                        result=self.score_to_result(gemini_score),
+                        score=round(gemini_score, 3),
+                        explanation=gemini_explanation,
+                    )
+                )
+        except Exception:
+            logger.exception("Gemini image analysis failed")
 
         # Estimate model fingerprint
         scores = [r.score for r in results]

@@ -1,8 +1,10 @@
 """POST /api/analyze — main analysis endpoint."""
 
+import logging
 import os
+import re
 import tempfile
-from fastapi import APIRouter, UploadFile, File, Request, Response
+from fastapi import APIRouter, UploadFile, File, Request, Response, HTTPException
 
 from api.deps import get_session_id, set_session_cookie
 from models.schemas import ForensicReport, FileType
@@ -13,7 +15,25 @@ from analyzers.video_analyzer import VideoAnalyzer
 from report.generator import build_report
 from db.session_store import save_report
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+
+
+def sanitize_filename(raw: str) -> str:
+    """Strip path components and dangerous characters from a user-supplied filename."""
+    # Take only the basename (handles both / and \ separators)
+    name = raw.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    # Remove control characters and problematic chars
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+    # Trim whitespace and dots from edges
+    name = name.strip(". ")
+    # Fallback and length cap
+    if not name:
+        name = "unknown"
+    return name[:200]
 
 MIME_TO_TYPE = {
     "text": FileType.TEXT,
@@ -65,7 +85,10 @@ async def analyze_file(
     set_session_cookie(response, session_id)
 
     file_bytes = await file.read()
-    file_name = file.filename or "unknown"
+    if len(file_bytes) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="File too large (max 100 MB)")
+
+    file_name = sanitize_filename(file.filename or "unknown")
     file_type = detect_file_type(file.content_type or "", file_name)
     file_size = len(file_bytes)
 
@@ -97,6 +120,11 @@ async def analyze_file(
         await save_report(session_id, report)
 
         return report
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Analysis failed for file %s (type=%s)", file_name, file_type)
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {e}")
     finally:
         # Clean up temp file
         try:

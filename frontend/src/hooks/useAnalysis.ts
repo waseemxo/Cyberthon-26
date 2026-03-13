@@ -1,8 +1,22 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useAppStore } from '../store/useAppStore';
 import { analyzeFile, analyzeText } from '../services/api';
 import type { ForensicReport, SessionHistoryItem } from '../types';
+
+function extractErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    // Backend returned a JSON error with detail field
+    const detail = err.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    // No response at all — network/connection issue
+    if (!err.response) return 'Network error — is the backend server running?';
+    return `Server error (${err.response.status})`;
+  }
+  if (err instanceof Error) return err.message;
+  return 'Analysis failed. Please try again.';
+}
 
 export function useAnalysis() {
   const navigate = useNavigate();
@@ -48,9 +62,7 @@ export function useAnalysis() {
         });
         handleReport(report);
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Analysis failed. Please try again.';
-        setError(message);
+        setError(extractErrorMessage(err));
       } finally {
         setIsAnalyzing(false);
         setUploadProgress(0);
@@ -70,9 +82,7 @@ export function useAnalysis() {
         });
         handleReport(report);
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Analysis failed. Please try again.';
-        setError(message);
+        setError(extractErrorMessage(err));
       } finally {
         setIsAnalyzing(false);
         setUploadProgress(0);

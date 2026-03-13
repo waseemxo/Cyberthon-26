@@ -1,5 +1,7 @@
 """GET /api/report/{id} and /api/report/{id}/pdf — report retrieval and PDF export."""
 
+import asyncio
+import re
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import io
@@ -9,6 +11,9 @@ from db.session_store import get_report
 from report.pdf_export import generate_pdf
 
 router = APIRouter()
+
+# Only allow alphanumeric, dash, dot, underscore, space for filenames in headers
+_SAFE_FILENAME_RE = re.compile(r'[^a-zA-Z0-9.\-_ ]')
 
 
 @router.get("/report/{report_id}", response_model=ForensicReport)
@@ -25,9 +30,9 @@ async def get_report_pdf(report_id: str):
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
 
-    pdf_bytes = generate_pdf(report)
+    pdf_bytes = await asyncio.to_thread(generate_pdf, report)
 
-    safe_name = report.file_name.replace('"', "'")
+    safe_name = _SAFE_FILENAME_RE.sub("_", report.file_name)[:100]
 
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
