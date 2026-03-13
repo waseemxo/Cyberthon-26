@@ -1,0 +1,22 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+aiofiles>=24.1.0
+aiosqlite>=0.20.0
+pydantic>=2.0.0
+
+# ML / Analysis
+numpy>=1.26.0
+scipy>=1.12.0
+Pillow>=10.0.0
+opencv-python-headless>=4.9.0
+librosa>=0.10.0
+soundfile>=0.12.0
+nltk>=3.8.0
+
+# PDF Report
+reportlab>=4.1.0
+
+# Utilities
+python-magic-bin>=0.4.14;sys_platform=="win32"
+python-magic>=0.4.27;sys_platform!="win32"
