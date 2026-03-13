@@ -4,7 +4,13 @@ import io
 import numpy as np
 
 
-def mel_spectrogram_analysis(file_path: str) -> tuple[float, str]:
+def load_audio(file_path: str, sr: int = 22050, duration: float = 60):
+    """Load audio once, reuse across all analysis functions."""
+    import librosa
+    return librosa.load(file_path, sr=sr, mono=True, duration=duration)
+
+
+def mel_spectrogram_analysis(file_path: str, y=None, sr=None) -> tuple[float, str]:
     """
     Analyze mel-spectrogram of audio for AI generation indicators.
     AI-generated audio (TTS) tends to have:
@@ -14,7 +20,8 @@ def mel_spectrogram_analysis(file_path: str) -> tuple[float, str]:
     """
     import librosa
 
-    y, sr = librosa.load(file_path, sr=22050, mono=True, duration=60)
+    if y is None or sr is None:
+        y, sr = librosa.load(file_path, sr=22050, mono=True, duration=60)
 
     if len(y) < sr:
         return 0.5, "Audio clip too short for reliable spectrogram analysis."
@@ -98,14 +105,15 @@ def mel_spectrogram_analysis(file_path: str) -> tuple[float, str]:
     return score, " ".join(parts)
 
 
-def silence_pattern_analysis(file_path: str) -> tuple[float, str]:
+def silence_pattern_analysis(file_path: str, y=None, sr=None) -> tuple[float, str]:
     """
     Analyze silence/pause patterns. AI-generated speech has unnaturally
     uniform pauses, while human speech has irregular silence gaps.
     """
     import librosa
 
-    y, sr = librosa.load(file_path, sr=22050, mono=True, duration=60)
+    if y is None or sr is None:
+        y, sr = librosa.load(file_path, sr=22050, mono=True, duration=60)
 
     if len(y) < sr * 2:
         return 0.5, "Audio too short for silence pattern analysis."
@@ -156,14 +164,15 @@ def silence_pattern_analysis(file_path: str) -> tuple[float, str]:
     return score, explanation
 
 
-def temporal_jitter_analysis(file_path: str) -> tuple[float, str]:
+def temporal_jitter_analysis(file_path: str, y=None, sr=None) -> tuple[float, str]:
     """
     Measure micro-timing variations in audio. Human speech has natural
     jitter in pitch and rhythm that AI often fails to replicate.
     """
     import librosa
 
-    y, sr = librosa.load(file_path, sr=22050, mono=True, duration=60)
+    if y is None or sr is None:
+        y, sr = librosa.load(file_path, sr=22050, mono=True, duration=60)
 
     if len(y) < sr:
         return 0.5, "Audio too short for jitter analysis."

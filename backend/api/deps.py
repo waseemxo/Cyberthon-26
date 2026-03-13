@@ -4,7 +4,7 @@ import uuid
 from fastapi import Request, Response
 
 
-SESSION_COOKIE = "deeptrace_session"
+SESSION_COOKIE = "lucid_session"
 
 
 def get_session_id(request: Request) -> str:

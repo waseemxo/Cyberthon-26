@@ -33,6 +33,6 @@ async def get_report_pdf(report_id: str):
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="DeepTrace_Report_{safe_name}.pdf"',
+            "Content-Disposition": f'attachment; filename="LUCID_Report_{safe_name}.pdf"',
         },
     )

@@ -11,7 +11,6 @@ import {
   ChevronUp,
   Fingerprint,
   AlertCircle,
-  Shield,
   Hash,
   Clock,
   FileType2,
@@ -21,6 +20,7 @@ import {
   Eye,
   Activity,
   Search,
+  Terminal,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ForensicReport, FileType, TechniqueResult } from '../types';
@@ -46,6 +46,39 @@ const TECHNIQUE_ICONS: Record<TechniqueResult, typeof AlertTriangle> = {
   INCONCLUSIVE: HelpCircle,
   CLEAN: CheckCircle,
 };
+
+function getInterpretation(result: TechniqueResult, score: number, technique: string): string {
+  const name = technique.toLowerCase();
+  if (result === 'SUSPICIOUS') {
+    if (name.includes('metadata') || name.includes('exif'))
+      return 'Metadata analysis found significant indicators of AI generation — missing or inconsistent EXIF data, absent camera information, or metadata patterns typical of AI tools.';
+    if (name.includes('fft') || name.includes('frequency'))
+      return 'Frequency domain analysis detected unusual spectral patterns — the distribution of high-frequency components deviates from natural content, suggesting synthetic generation.';
+    if (name.includes('ela') || name.includes('error level'))
+      return 'Error Level Analysis found suspiciously uniform error distributions — natural content typically shows varied compression artifacts, while AI-generated content is more uniform.';
+    if (name.includes('pixel'))
+      return 'Pixel-level statistics revealed abnormal noise patterns — the noise distribution across color channels is too uniform, a common hallmark of AI-generated imagery.';
+    if (name.includes('histogram') || name.includes('color'))
+      return 'Color distribution analysis found synthetic patterns — histogram gaps or unusual smoothness that diverges from natural photographic characteristics.';
+    if (name.includes('spectrogram') || name.includes('mel'))
+      return 'Spectral analysis of audio found overly clean harmonic patterns — natural recordings have micro-variations that AI-generated audio typically lacks.';
+    if (name.includes('silence') || name.includes('pause'))
+      return 'Pause/silence patterns are unnaturally uniform — human speech has irregular timing, while AI-generated speech tends to produce evenly-spaced pauses.';
+    if (name.includes('jitter') || name.includes('temporal') && name.includes('jitter'))
+      return 'Micro-timing analysis detected insufficient pitch and rhythm variation — human voice naturally exhibits jitter that AI synthesis often fails to replicate.';
+    if (name.includes('optical flow'))
+      return 'Motion analysis between frames shows synthetic patterns — the optical flow characteristics differ from natural camera-captured motion.';
+    if (name.includes('temporal consistency'))
+      return 'Frame-to-frame analysis found unnatural consistency — AI-generated video often has suspiciously stable characteristics across frames.';
+    if (name.includes('face') || name.includes('landmark'))
+      return 'Facial landmark analysis detected anomalies — geometric relationships between facial features show patterns inconsistent with natural human faces.';
+    return `This technique flagged the content as suspicious (score: ${Math.round(score * 100)}%) — the measured characteristics deviate significantly from expected natural patterns.`;
+  }
+  if (result === 'INCONCLUSIVE') {
+    return `Analysis was inconclusive (score: ${Math.round(score * 100)}%) — measured values fall in a gray zone where both natural and AI-generated content can produce similar patterns. This neither confirms nor rules out AI generation.`;
+  }
+  return `This technique found no significant indicators of AI generation (score: ${Math.round(score * 100)}%) — the measured characteristics fall within expected ranges for natural content.`;
+}
 
 interface AnalysisResultProps {
   report: ForensicReport;
@@ -108,17 +141,17 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
   return (
     <div className="space-y-4 animate-fade-in">
       {/* ── Case Header ── */}
-      <div className="bg-surface-light border border-border rounded-xl p-4">
+      <div className="cyber-card p-4">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary-light" />
-            <h1 className="text-base font-bold text-text-primary tracking-wide uppercase">
+            <Terminal className="w-5 h-5 text-primary" />
+            <h1 className="text-base font-bold text-primary font-mono tracking-wide uppercase glow-text">
               Forensic Analysis Report
             </h1>
           </div>
           <div className="flex items-center gap-2">
             <span
-              className="text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider border"
+              className="text-xs font-bold font-mono px-2.5 py-1 rounded uppercase tracking-wider border"
               style={{
                 color: riskColor,
                 backgroundColor: `${riskColor}10`,
@@ -134,7 +167,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
           <div className="bg-surface rounded-lg p-3 border border-border/50">
             <div className="flex items-center gap-1.5 mb-1">
               <Hash className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
                 Case ID
               </span>
             </div>
@@ -144,7 +177,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
               </code>
               <button
                 onClick={() => copyToClipboard(report.id, setCopiedId)}
-                className="text-text-muted hover:text-text-primary transition-colors"
+                className="text-text-muted hover:text-primary transition-colors"
                 title="Copy Case ID"
               >
                 {copiedId ? (
@@ -159,7 +192,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
           <div className="bg-surface rounded-lg p-3 border border-border/50">
             <div className="flex items-center gap-1.5 mb-1">
               <Clock className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
                 Analyzed
               </span>
             </div>
@@ -171,7 +204,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
           <div className="bg-surface rounded-lg p-3 border border-border/50">
             <div className="flex items-center gap-1.5 mb-1">
               <FileType2 className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
                 File Type
               </span>
             </div>
@@ -183,7 +216,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
           <div className="bg-surface rounded-lg p-3 border border-border/50">
             <div className="flex items-center gap-1.5 mb-1">
               <HardDrive className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
                 File Size
               </span>
             </div>
@@ -196,13 +229,13 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
         {/* File identity */}
         <div className="mt-3 bg-surface rounded-lg p-3 border border-border/50">
           <div className="flex items-center gap-2 mb-2">
-            <FileIcon className="w-4 h-4 text-text-muted" />
-            <span className="text-sm font-semibold text-text-primary">
+            <FileIcon className="w-4 h-4 text-primary/60" />
+            <span className="text-sm font-semibold text-text-primary font-mono">
               {report.file_name}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold shrink-0">
+            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono shrink-0">
               SHA-256:
             </span>
             <code className="text-[11px] font-mono text-text-secondary break-all">
@@ -210,7 +243,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
             </code>
             <button
               onClick={() => copyToClipboard(hashValue, setCopiedHash)}
-              className="text-text-muted hover:text-text-primary transition-colors shrink-0"
+              className="text-text-muted hover:text-primary transition-colors shrink-0"
               title="Copy hash"
             >
               {copiedHash ? (
@@ -226,8 +259,8 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
       {/* ── Threat Assessment ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Score Gauge */}
-        <div className="bg-surface-light border border-border rounded-xl p-6 flex flex-col items-center justify-center">
-          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold mb-3">
+        <div className="cyber-card p-6 flex flex-col items-center justify-center">
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono mb-3">
             AI Confidence Score
           </span>
           <ScoreGauge
@@ -237,10 +270,10 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
         </div>
 
         {/* Evidence Summary */}
-        <div className="bg-surface-light border border-border rounded-xl p-5">
+        <div className="cyber-card p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-4 h-4 text-text-muted" />
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+            <Activity className="w-4 h-4 text-primary/60" />
+            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
               Evidence Summary
             </span>
           </div>
@@ -299,10 +332,10 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
         </div>
 
         {/* Score Statistics */}
-        <div className="bg-surface-light border border-border rounded-xl p-5">
+        <div className="cyber-card p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Search className="w-4 h-4 text-text-muted" />
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+            <Search className="w-4 h-4 text-primary/60" />
+            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
               Score Statistics
             </span>
           </div>
@@ -310,7 +343,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
           <div className="space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-text-muted">Highest Score</span>
+                <span className="text-xs text-text-muted font-mono">Highest Score</span>
                 <span
                   className="text-sm font-bold font-mono"
                   style={{ color: getScoreColor(highestScore) }}
@@ -330,7 +363,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-text-muted">Mean Score</span>
+                <span className="text-xs text-text-muted font-mono">Mean Score</span>
                 <span
                   className="text-sm font-bold font-mono"
                   style={{ color: getScoreColor(avgScore) }}
@@ -350,7 +383,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-text-muted">Lowest Score</span>
+                <span className="text-xs text-text-muted font-mono">Lowest Score</span>
                 <span
                   className="text-sm font-bold font-mono"
                   style={{ color: getScoreColor(lowestScore) }}
@@ -370,7 +403,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
             </div>
             <div className="pt-2 border-t border-border/50">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted">Weighted Confidence</span>
+                <span className="text-xs text-text-muted font-mono">Weighted Confidence</span>
                 <span
                   className="text-sm font-bold font-mono"
                   style={{ color: getScoreColor(report.confidence_score) }}
@@ -387,15 +420,15 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
       {(report.model_fingerprint || report.provenance_gaps.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {report.model_fingerprint && (
-            <div className="bg-surface-light border border-border rounded-xl p-5">
+            <div className="cyber-card p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Fingerprint className="w-4 h-4 text-primary-light" />
-                <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+                <Fingerprint className="w-4 h-4 text-primary" />
+                <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
                   Model Fingerprint
                 </span>
               </div>
-              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
-                <p className="text-sm font-medium text-primary-light">
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                <p className="text-sm font-medium text-primary-light font-mono">
                   {report.model_fingerprint}
                 </p>
               </div>
@@ -403,10 +436,10 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
           )}
 
           {report.provenance_gaps.length > 0 && (
-            <div className="bg-surface-light border border-border rounded-xl p-5">
+            <div className="cyber-card p-5">
               <div className="flex items-center gap-2 mb-3">
                 <AlertCircle className="w-4 h-4 text-warning" />
-                <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+                <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
                   Provenance Gaps ({report.provenance_gaps.length})
                 </span>
               </div>
@@ -414,9 +447,9 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
                 {report.provenance_gaps.map((gap, i) => (
                   <li
                     key={i}
-                    className="flex items-start gap-2 text-sm text-text-secondary bg-warning/5 border border-warning/15 rounded-lg p-2.5"
+                    className="flex items-start gap-2 text-sm text-text-secondary bg-warning/5 border border-warning/15 rounded-lg p-2.5 font-mono text-xs"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-warning mt-1.5 shrink-0" />
+                    <span className="text-warning shrink-0">!</span>
                     {gap}
                   </li>
                 ))}
@@ -427,25 +460,26 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
       )}
 
       {/* ── Forensic Summary ── */}
-      <div className="bg-surface-light border border-border rounded-xl p-5">
+      <div className="cyber-card p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Eye className="w-4 h-4 text-text-muted" />
-          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+          <Eye className="w-4 h-4 text-primary/60" />
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
             Forensic Summary
           </span>
         </div>
-        <div className="bg-surface rounded-lg p-4 border border-border/50">
-          <p className="text-sm text-text-secondary leading-relaxed">
+        <div className="bg-surface rounded-lg p-4 border border-primary/10">
+          <p className="text-sm text-text-secondary leading-relaxed font-mono">
+            <span className="text-primary/50">$ </span>
             {report.forensic_summary}
           </p>
         </div>
       </div>
 
       {/* ── Technique Score Heatmap ── */}
-      <div className="bg-surface-light border border-border rounded-xl p-5">
+      <div className="cyber-card p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Activity className="w-4 h-4 text-text-muted" />
-          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+          <Activity className="w-4 h-4 text-primary/60" />
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
             Technique Score Matrix
           </span>
         </div>
@@ -456,7 +490,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
             return (
               <div
                 key={index}
-                className="bg-surface rounded-lg p-3 border border-border/50 cursor-pointer hover:border-border transition-colors"
+                className="bg-surface rounded-lg p-3 border border-border/50 cursor-pointer hover:border-primary/30 transition-colors"
                 onClick={() => {
                   const el = document.getElementById(`technique-${index}`);
                   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -464,7 +498,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
                 }}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-medium text-text-secondary truncate mr-2">
+                  <span className="text-[11px] font-mono text-text-secondary truncate mr-2">
                     {technique.technique}
                   </span>
                   <span
@@ -500,27 +534,27 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
       </div>
 
       {/* ── Detailed Technique Breakdown ── */}
-      <div className="bg-surface-light border border-border rounded-xl overflow-hidden">
+      <div className="cyber-card overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide">
+            <h3 className="text-sm font-bold text-primary font-mono uppercase tracking-wide">
               Detailed Analysis Breakdown
             </h3>
-            <p className="text-xs text-text-muted mt-0.5">
-              {totalTechniques} forensic techniques applied · Click to expand/collapse
+            <p className="text-xs text-text-muted mt-0.5 font-mono">
+              {totalTechniques} forensic techniques applied
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={expandAll}
-              className="text-[10px] uppercase tracking-wider text-text-muted hover:text-primary-light transition-colors font-semibold"
+              className="text-[10px] uppercase tracking-wider text-text-muted hover:text-primary transition-colors font-semibold font-mono"
             >
               Expand All
             </button>
-            <span className="text-text-muted">|</span>
+            <span className="text-border">|</span>
             <button
               onClick={collapseAll}
-              className="text-[10px] uppercase tracking-wider text-text-muted hover:text-primary-light transition-colors font-semibold"
+              className="text-[10px] uppercase tracking-wider text-text-muted hover:text-primary transition-colors font-semibold font-mono"
             >
               Collapse All
             </button>
@@ -533,6 +567,10 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
             const color = getTechniqueColor(technique.result);
             const ResultIcon = TECHNIQUE_ICONS[technique.result];
             const scorePercent = Math.round(technique.score * 100);
+            const weight =
+              technique.technique.toLowerCase().includes('exif') || technique.technique.toLowerCase().includes('metadata')
+                ? '2.0x'
+                : technique.result === 'SUSPICIOUS' ? '1.5x' : '1.0x';
 
             return (
               <div key={index} id={`technique-${index}`}>
@@ -541,7 +579,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
                   className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-surface-lighter transition-colors text-left"
                 >
                   {/* Index badge */}
-                  <span className="text-[10px] font-mono text-text-muted w-5 shrink-0">
+                  <span className="text-[10px] font-mono text-primary/40 w-5 shrink-0">
                     #{index + 1}
                   </span>
 
@@ -553,7 +591,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">
+                    <p className="text-sm font-medium text-text-primary font-mono truncate">
                       {technique.technique}
                     </p>
                   </div>
@@ -597,33 +635,76 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
 
                 {isExpanded && (
                   <div className="px-5 pb-4 animate-fade-in">
-                    <div className="ml-12 bg-surface border border-border/50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
-                          Findings
-                        </span>
-                        <div
-                          className="h-px flex-1"
-                          style={{ backgroundColor: `${color}20` }}
-                        />
+                    <div className="ml-12 space-y-3">
+                      {/* Findings */}
+                      <div className="bg-surface border border-border/50 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
+                            Findings
+                          </span>
+                          <div
+                            className="h-px flex-1"
+                            style={{ backgroundColor: `${color}20` }}
+                          />
+                        </div>
+                        <p className="text-sm text-text-secondary leading-relaxed">
+                          {technique.explanation}
+                        </p>
                       </div>
-                      <p className="text-sm text-text-secondary leading-relaxed">
-                        {technique.explanation}
-                      </p>
-                      <div className="mt-3 flex items-center gap-4 text-[10px] font-mono text-text-muted">
-                        <span>
-                          SCORE: <span style={{ color }} className="font-bold">{technique.score.toFixed(3)}</span>
-                        </span>
-                        <span>
-                          RESULT: <span style={{ color }} className="font-bold">{technique.result}</span>
-                        </span>
-                        <span>
-                          WEIGHT: <span className="font-bold text-text-secondary">{
-                          technique.technique.toLowerCase().includes('exif') || technique.technique.toLowerCase().includes('metadata')
-                            ? '2.0x'
-                            : technique.result === 'SUSPICIOUS' ? '1.5x' : '1.0x'
-                        }</span>
-                        </span>
+
+                      {/* What this means */}
+                      <div className="bg-surface border border-primary/10 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] uppercase tracking-wider text-primary/60 font-semibold font-mono">
+                            What This Means
+                          </span>
+                          <div className="h-px flex-1 bg-primary/10" />
+                        </div>
+                        <p className="text-sm text-text-secondary leading-relaxed">
+                          {getInterpretation(technique.result, technique.score, technique.technique)}
+                        </p>
+                      </div>
+
+                      {/* Technical detail bar */}
+                      <div className="bg-surface border border-border/50 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
+                            Technical Detail
+                          </span>
+                          <div className="h-px flex-1 bg-border/30" />
+                        </div>
+                        {/* Score bar with thresholds */}
+                        <div className="relative h-3 rounded-full bg-surface-lighter overflow-hidden mb-2">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{
+                              width: `${scorePercent}%`,
+                              backgroundColor: color,
+                              boxShadow: `0 0 8px ${color}40`,
+                            }}
+                          />
+                          {/* Threshold markers */}
+                          <div className="absolute top-0 bottom-0 left-[35%] w-px bg-text-muted/30" title="Clean threshold (0.35)" />
+                          <div className="absolute top-0 bottom-0 left-[65%] w-px bg-text-muted/30" title="Suspicious threshold (0.65)" />
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] font-mono text-text-muted mb-3">
+                          <span>0%</span>
+                          <span className="text-success">CLEAN &lt;35%</span>
+                          <span className="text-warning">INCONCLUSIVE</span>
+                          <span className="text-danger">&gt;65% SUSPICIOUS</span>
+                          <span>100%</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-[10px] font-mono text-text-muted">
+                          <span>
+                            SCORE: <span style={{ color }} className="font-bold">{technique.score.toFixed(3)}</span>
+                          </span>
+                          <span>
+                            RESULT: <span style={{ color }} className="font-bold">{technique.result}</span>
+                          </span>
+                          <span>
+                            WEIGHT: <span className="font-bold text-text-secondary">{weight}</span>
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -639,7 +720,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
         <a
           href={getReportPdfUrl(report.id)}
           download
-          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-medium transition-colors no-underline text-sm"
+          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary/20 border border-primary/30 hover:bg-primary/30 text-primary font-mono font-medium transition-colors no-underline text-sm"
         >
           <Download className="w-4 h-4" />
           Export PDF Report

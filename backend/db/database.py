@@ -2,7 +2,7 @@ import aiosqlite
 import json
 import os
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "deeptrace.db")
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lucid.db")
 
 
 async def get_db() -> aiosqlite.Connection:

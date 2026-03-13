@@ -51,27 +51,27 @@ export default function ScoreGauge({
             strokeLinecap="round"
             className="transition-all duration-1000 ease-out"
             style={{
-              filter: `drop-shadow(0 0 8px ${color}40)`,
+              filter: `drop-shadow(0 0 10px ${color}50)`,
             }}
           />
         </svg>
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className="text-4xl font-bold tabular-nums"
+            className="text-4xl font-bold font-mono tabular-nums"
             style={{ color }}
           >
             {percentage}
           </span>
-          <span className="text-xs text-text-muted font-medium uppercase tracking-wider">
+          <span className="text-xs text-text-muted font-mono uppercase tracking-wider">
             percent
           </span>
         </div>
       </div>
       {label && (
         <span
-          className="text-sm font-semibold px-3 py-1 rounded-full"
-          style={{ color, backgroundColor: `${color}15` }}
+          className="text-sm font-semibold font-mono px-3 py-1 rounded-full border"
+          style={{ color, backgroundColor: `${color}10`, borderColor: `${color}30` }}
         >
           {label}
         </span>

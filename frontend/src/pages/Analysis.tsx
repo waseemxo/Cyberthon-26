@@ -40,8 +40,8 @@ export default function AnalysisPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <Loader2 className="w-10 h-10 text-primary-light animate-spin mb-4" />
-        <p className="text-text-secondary">Loading report...</p>
+        <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+        <p className="text-text-secondary font-mono">Loading report<span className="animate-blink">_</span></p>
       </div>
     );
   }
@@ -49,12 +49,12 @@ export default function AnalysisPage() {
   if (error || !report) {
     return (
       <div className="text-center py-24">
-        <p className="text-danger mb-4">{error || 'Report not found'}</p>
+        <p className="text-danger mb-4 font-mono">[ERROR] {error || 'Report not found'}</p>
         <Link
           to="/"
-          className="text-primary-light hover:underline text-sm"
+          className="text-primary hover:underline text-sm font-mono"
         >
-          Back to home
+          &lt; Back to home
         </Link>
       </div>
     );
@@ -64,7 +64,7 @@ export default function AnalysisPage() {
     <div className="space-y-6">
       <Link
         to="/"
-        className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors no-underline"
+        className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-primary transition-colors no-underline font-mono"
       >
         <ArrowLeft className="w-4 h-4" />
         New Analysis

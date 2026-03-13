@@ -29,13 +29,14 @@ def extract_keyframes(file_path: str, max_frames: int = 30) -> list[np.ndarray]:
     return frames
 
 
-def temporal_consistency_analysis(file_path: str) -> tuple[float, str]:
+def temporal_consistency_analysis(file_path: str, frames: list[np.ndarray] | None = None) -> tuple[float, str]:
     """
     Check temporal consistency between frames. AI-generated videos often
     have flickering artifacts, inconsistent lighting, and unnatural
     inter-frame changes.
     """
-    frames = extract_keyframes(file_path, max_frames=30)
+    if frames is None:
+        frames = extract_keyframes(file_path, max_frames=30)
 
     if len(frames) < 5:
         return 0.5, "Insufficient frames for temporal analysis."
@@ -116,12 +117,13 @@ def temporal_consistency_analysis(file_path: str) -> tuple[float, str]:
     return score, " ".join(parts)
 
 
-def face_landmark_analysis(file_path: str) -> tuple[float, str]:
+def face_landmark_analysis(file_path: str, frames: list[np.ndarray] | None = None) -> tuple[float, str]:
     """
     Analyze facial landmarks for deepfake indicators:
     asymmetry, unnatural proportions, temporal inconsistencies.
     """
-    frames = extract_keyframes(file_path, max_frames=20)
+    if frames is None:
+        frames = extract_keyframes(file_path, max_frames=20)
 
     if len(frames) < 3:
         return 0.5, "Insufficient frames for face analysis."
@@ -202,12 +204,13 @@ def face_landmark_analysis(file_path: str) -> tuple[float, str]:
     return score, " ".join(parts)
 
 
-def optical_flow_analysis(file_path: str) -> tuple[float, str]:
+def optical_flow_analysis(file_path: str, frames: list[np.ndarray] | None = None) -> tuple[float, str]:
     """
     Analyze optical flow patterns. AI-generated video often has
     unrealistic motion patterns that optical flow can reveal.
     """
-    frames = extract_keyframes(file_path, max_frames=20)
+    if frames is None:
+        frames = extract_keyframes(file_path, max_frames=20)
 
     if len(frames) < 5:
         return 0.5, "Insufficient frames for optical flow analysis."

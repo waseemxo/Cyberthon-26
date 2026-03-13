@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, History, Upload } from 'lucide-react';
+import { History, Upload } from 'lucide-react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -12,20 +12,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none scanline-overlay opacity-30" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 no-underline">
-              <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-primary-light" />
+            <Link to="/" className="flex items-center gap-3 no-underline group">
+              <div className="w-9 h-9 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center group-hover:shadow-[0_0_12px_rgba(0,255,136,0.3)] transition-shadow">
+                <span className="text-primary-light font-mono font-bold text-sm">L</span>
               </div>
               <div>
-                <span className="text-lg font-bold text-text-primary tracking-tight">
-                  DeepTrace
+                <span className="text-lg font-bold text-primary font-mono tracking-widest glow-text">
+                  LUCID
                 </span>
-                <span className="hidden sm:inline text-xs text-text-muted ml-2 font-mono">
-                  AI Forensics
+                <span className="hidden sm:block text-[10px] text-text-muted font-mono leading-none mt-0.5">
+                  Layered Unforgable Content Integrity Detection
                 </span>
               </div>
             </Link>
@@ -41,10 +42,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <Link
                     key={path}
                     to={path}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all no-underline ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-mono font-medium transition-all no-underline ${
                       isActive
-                        ? 'bg-primary/15 text-primary-light'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-lighter'
+                        ? 'bg-primary/15 text-primary-light border border-primary/20'
+                        : 'text-text-secondary hover:text-primary-light hover:bg-surface-lighter border border-transparent'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -67,8 +68,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Footer */}
       <footer className="border-t border-border py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-text-muted text-sm">
-            DeepTrace — Forensic Analysis System for AI-Generated Content
+          <p className="text-center text-text-muted text-sm font-mono">
+            LUCID — Layered Unforgable Content Integrity Detection
           </p>
         </div>
       </footer>

@@ -1,5 +1,6 @@
 """Image forensic analyzer — orchestrates all image analysis techniques."""
 
+import asyncio
 import io
 import numpy as np
 from PIL import Image
@@ -19,7 +20,7 @@ class ImageAnalyzer(BaseAnalyzer):
     async def analyze(self, file_path: str, file_bytes: bytes) -> list[AnalysisTechnique]:
         results: list[AnalysisTechnique] = []
 
-        # 1. Metadata inspection
+        # 1. Metadata inspection (fast, no thread pool needed)
         meta_score, meta_expl, meta_gaps = extract_image_metadata(file_bytes)
         self._provenance_gaps = meta_gaps
         results.append(
@@ -31,47 +32,54 @@ class ImageAnalyzer(BaseAnalyzer):
             )
         )
 
+        # Run CPU-heavy analyses in thread pool
+        def _run_image_analyses():
+            return (
+                fft_analysis(file_bytes),
+                error_level_analysis(file_bytes),
+                self._pixel_statistics(file_bytes),
+                self._color_histogram_analysis(file_bytes),
+            )
+
+        fft_result, ela_result, pixel_result, hist_result = await asyncio.to_thread(_run_image_analyses)
+
         # 2. Frequency domain analysis (FFT)
-        fft_score, fft_expl = fft_analysis(file_bytes)
         results.append(
             AnalysisTechnique(
                 technique="Frequency Domain Analysis (FFT)",
-                result=self.score_to_result(fft_score),
-                score=round(fft_score, 3),
-                explanation=fft_expl,
+                result=self.score_to_result(fft_result[0]),
+                score=round(fft_result[0], 3),
+                explanation=fft_result[1],
             )
         )
 
         # 3. Error Level Analysis
-        ela_score, ela_expl = error_level_analysis(file_bytes)
         results.append(
             AnalysisTechnique(
                 technique="Error Level Analysis (ELA)",
-                result=self.score_to_result(ela_score),
-                score=round(ela_score, 3),
-                explanation=ela_expl,
+                result=self.score_to_result(ela_result[0]),
+                score=round(ela_result[0], 3),
+                explanation=ela_result[1],
             )
         )
 
         # 4. Pixel-level statistical analysis
-        pixel_score, pixel_expl = self._pixel_statistics(file_bytes)
         results.append(
             AnalysisTechnique(
                 technique="Pixel Statistical Analysis",
-                result=self.score_to_result(pixel_score),
-                score=round(pixel_score, 3),
-                explanation=pixel_expl,
+                result=self.score_to_result(pixel_result[0]),
+                score=round(pixel_result[0], 3),
+                explanation=pixel_result[1],
             )
         )
 
         # 5. Color histogram analysis
-        hist_score, hist_expl = self._color_histogram_analysis(file_bytes)
         results.append(
             AnalysisTechnique(
                 technique="Color Histogram Analysis",
-                result=self.score_to_result(hist_score),
-                score=round(hist_score, 3),
-                explanation=hist_expl,
+                result=self.score_to_result(hist_result[0]),
+                score=round(hist_result[0], 3),
+                explanation=hist_result[1],
             )
         )
 

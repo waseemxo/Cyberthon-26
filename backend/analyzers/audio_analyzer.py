@@ -1,9 +1,12 @@
 """Audio forensic analyzer — orchestrates all audio analysis techniques."""
 
+import asyncio
+
 from analyzers.base import BaseAnalyzer
 from models.schemas import AnalysisTechnique
 from forensics.metadata import extract_audio_metadata
 from forensics.spectrogram import (
+    load_audio,
     mel_spectrogram_analysis,
     silence_pattern_analysis,
     temporal_jitter_analysis,
@@ -19,7 +22,7 @@ class AudioAnalyzer(BaseAnalyzer):
         results: list[AnalysisTechnique] = []
         file_name = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path.rsplit("\\", 1)[-1]
 
-        # 1. Metadata inspection
+        # 1. Metadata inspection (fast, no need for thread pool)
         meta_score, meta_expl, meta_gaps = extract_audio_metadata(file_bytes, file_name)
         self._provenance_gaps = meta_gaps
         results.append(
@@ -31,66 +34,73 @@ class AudioAnalyzer(BaseAnalyzer):
             )
         )
 
+        # Load audio ONCE in thread pool, reuse for all 3 techniques
+        def _run_audio_analyses():
+            y, sr = load_audio(file_path)
+            spec_result = _safe_call(mel_spectrogram_analysis, file_path, y, sr)
+            silence_result = _safe_call(silence_pattern_analysis, file_path, y, sr)
+            jitter_result = _safe_call(temporal_jitter_analysis, file_path, y, sr)
+            return spec_result, silence_result, jitter_result
+
+        spec_result, silence_result, jitter_result = await asyncio.to_thread(_run_audio_analyses)
+
         # 2. Mel-spectrogram analysis
-        try:
-            spec_score, spec_expl = mel_spectrogram_analysis(file_path)
+        if spec_result[0] is not None:
             results.append(
                 AnalysisTechnique(
                     technique="Mel-Spectrogram Analysis",
-                    result=self.score_to_result(spec_score),
-                    score=round(spec_score, 3),
-                    explanation=spec_expl,
+                    result=self.score_to_result(spec_result[0]),
+                    score=round(spec_result[0], 3),
+                    explanation=spec_result[1],
                 )
             )
-        except Exception as e:
+        else:
             results.append(
                 AnalysisTechnique(
                     technique="Mel-Spectrogram Analysis",
                     result="INCONCLUSIVE",
                     score=0.5,
-                    explanation=f"Could not process audio for spectrogram analysis: {e}",
+                    explanation=f"Could not process audio for spectrogram analysis: {spec_result[1]}",
                 )
             )
 
         # 3. Silence pattern analysis
-        try:
-            silence_score, silence_expl = silence_pattern_analysis(file_path)
+        if silence_result[0] is not None:
             results.append(
                 AnalysisTechnique(
                     technique="Silence Pattern Analysis",
-                    result=self.score_to_result(silence_score),
-                    score=round(silence_score, 3),
-                    explanation=silence_expl,
+                    result=self.score_to_result(silence_result[0]),
+                    score=round(silence_result[0], 3),
+                    explanation=silence_result[1],
                 )
             )
-        except Exception as e:
+        else:
             results.append(
                 AnalysisTechnique(
                     technique="Silence Pattern Analysis",
                     result="INCONCLUSIVE",
                     score=0.5,
-                    explanation=f"Could not analyze silence patterns: {e}",
+                    explanation=f"Could not analyze silence patterns: {silence_result[1]}",
                 )
             )
 
         # 4. Temporal jitter analysis
-        try:
-            jitter_score, jitter_expl = temporal_jitter_analysis(file_path)
+        if jitter_result[0] is not None:
             results.append(
                 AnalysisTechnique(
                     technique="Pitch & Amplitude Jitter Analysis",
-                    result=self.score_to_result(jitter_score),
-                    score=round(jitter_score, 3),
-                    explanation=jitter_expl,
+                    result=self.score_to_result(jitter_result[0]),
+                    score=round(jitter_result[0], 3),
+                    explanation=jitter_result[1],
                 )
             )
-        except Exception as e:
+        else:
             results.append(
                 AnalysisTechnique(
                     technique="Pitch & Amplitude Jitter Analysis",
                     result="INCONCLUSIVE",
                     score=0.5,
-                    explanation=f"Could not perform jitter analysis: {e}",
+                    explanation=f"Could not perform jitter analysis: {jitter_result[1]}",
                 )
             )
 
@@ -125,3 +135,11 @@ class AudioAnalyzer(BaseAnalyzer):
             self._model_fingerprint = "Unknown TTS/AI voice model (estimated — spectral indicators suggest synthesis)"
         else:
             self._model_fingerprint = None
+
+
+def _safe_call(func, file_path, y, sr):
+    """Call an analysis function, returning (None, error_msg) on failure."""
+    try:
+        return func(file_path, y=y, sr=sr)
+    except Exception as e:
+        return (None, str(e))

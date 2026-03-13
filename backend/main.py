@@ -1,4 +1,4 @@
-"""DeepTrace — FastAPI backend entrypoint."""
+"""LUCID — FastAPI backend entrypoint."""
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="DeepTrace API",
+    title="LUCID API",
     description="Forensic Analysis System for AI-Generated Content",
     version="1.0.0",
     lifespan=lifespan,
@@ -44,4 +44,4 @@ app.include_router(report.router, prefix="/api")
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "service": "DeepTrace API"}
+    return {"status": "ok", "service": "LUCID API"}
