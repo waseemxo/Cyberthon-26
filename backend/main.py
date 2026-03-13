@@ -1,12 +1,16 @@
 """LUCID — FastAPI backend entrypoint."""
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from db.database import init_db
 from api.routes import analyze, history, report
+
+load_dotenv()
 
 
 @asynccontextmanager
@@ -20,7 +24,6 @@ async def lifespan(app: FastAPI):
         await asyncio.to_thread(load_model)
 
     # Startup: configure Gemini analyzer (if SDK and API key available)
-    import os
     from forensics.gemini_analyzer import is_available as gemini_available, configure as gemini_configure
     if gemini_available():
         api_key = os.environ.get("GEMINI_API_KEY")
