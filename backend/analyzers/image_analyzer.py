@@ -1,6 +1,7 @@
 """Image forensic analyzer — orchestrates all image analysis techniques."""
 
 import io
+import logging
 import numpy as np
 from PIL import Image
 
@@ -9,12 +10,19 @@ from models.schemas import AnalysisTechnique
 from forensics.metadata import extract_image_metadata
 from forensics.frequency import fft_analysis
 from forensics.ela import error_level_analysis
+from forensics.gemini_analyzer import (
+    gemini_image_forensic_analysis,
+    check_synthid_watermark,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ImageAnalyzer(BaseAnalyzer):
     def __init__(self):
         self._model_fingerprint: str | None = None
         self._provenance_gaps: list[str] = []
+        self._gemini_model_guess: str | None = None
 
     async def analyze(self, file_path: str, file_bytes: bytes) -> list[AnalysisTechnique]:
         results: list[AnalysisTechnique] = []
@@ -74,6 +82,74 @@ class ImageAnalyzer(BaseAnalyzer):
                 explanation=hist_expl,
             )
         )
+
+        # 6. Gemini AI Vision Forensic Analysis
+        try:
+            # Detect MIME type for inline upload
+            img_check = Image.open(io.BytesIO(file_bytes))
+            mime_map = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
+            mime = mime_map.get(img_check.format, "image/png")
+            img_check.close()
+
+            gem_score, gem_expl, gem_model, gem_synthid = await gemini_image_forensic_analysis(
+                file_bytes, mime
+            )
+            results.append(
+                AnalysisTechnique(
+                    technique="Gemini AI Vision Forensic Analysis",
+                    result=self.score_to_result(gem_score),
+                    score=round(gem_score, 3),
+                    explanation=gem_expl,
+                )
+            )
+            self._gemini_model_guess = gem_model
+
+            # If Gemini detected SynthID, add to provenance info
+            if gem_synthid:
+                self._provenance_gaps.append("SynthID watermark traces detected by Gemini vision analysis")
+
+        except Exception as e:
+            logger.warning("Gemini image forensic analysis failed: %s", e)
+            results.append(
+                AnalysisTechnique(
+                    technique="Gemini AI Vision Forensic Analysis",
+                    result="INCONCLUSIVE",
+                    score=0.5,
+                    explanation=f"Gemini API unavailable: {e}",
+                )
+            )
+
+        # 7. SynthID Digital Watermark Detection
+        try:
+            img_check2 = Image.open(io.BytesIO(file_bytes))
+            mime_map2 = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
+            mime2 = mime_map2.get(img_check2.format, "image/png")
+            img_check2.close()
+
+            synthid_score, synthid_expl, watermark_found = await check_synthid_watermark(
+                file_bytes, mime2
+            )
+            results.append(
+                AnalysisTechnique(
+                    technique="SynthID Digital Watermark Detection",
+                    result=self.score_to_result(synthid_score),
+                    score=round(synthid_score, 3),
+                    explanation=synthid_expl,
+                )
+            )
+            if watermark_found:
+                self._provenance_gaps.append("Digital watermark (SynthID) positively identified")
+
+        except Exception as e:
+            logger.warning("SynthID watermark check failed: %s", e)
+            results.append(
+                AnalysisTechnique(
+                    technique="SynthID Digital Watermark Detection",
+                    result="INCONCLUSIVE",
+                    score=0.5,
+                    explanation=f"SynthID check unavailable: {e}",
+                )
+            )
 
         # Estimate model fingerprint
         scores = [r.score for r in results]
@@ -190,6 +266,11 @@ class ImageAnalyzer(BaseAnalyzer):
 
     def _estimate_fingerprint(self, file_bytes: bytes, avg_score: float):
         """Attempt to identify the generation model from image characteristics."""
+        # Prefer Gemini's model guess if available
+        if self._gemini_model_guess:
+            self._model_fingerprint = f"{self._gemini_model_guess} (identified by Gemini vision analysis)"
+            return
+
         if avg_score < 0.5:
             self._model_fingerprint = None
             return

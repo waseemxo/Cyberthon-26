@@ -1,5 +1,7 @@
 """Video forensic analyzer — orchestrates all video analysis techniques."""
 
+import logging
+
 from analyzers.base import BaseAnalyzer
 from models.schemas import AnalysisTechnique
 from forensics.metadata import extract_video_metadata
@@ -8,12 +10,19 @@ from forensics.temporal import (
     face_landmark_analysis,
     optical_flow_analysis,
 )
+from forensics.gemini_analyzer import (
+    gemini_video_forensic_analysis,
+    check_synthid_watermark,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class VideoAnalyzer(BaseAnalyzer):
     def __init__(self):
         self._model_fingerprint: str | None = None
         self._provenance_gaps: list[str] = []
+        self._gemini_model_guess: str | None = None
 
     async def analyze(self, file_path: str, file_bytes: bytes) -> list[AnalysisTechnique]:
         results: list[AnalysisTechnique] = []
@@ -94,6 +103,72 @@ class VideoAnalyzer(BaseAnalyzer):
                 )
             )
 
+        # 5. Gemini AI Vision Forensic Analysis (full video via File API)
+        try:
+            gem_score, gem_expl, gem_model, gem_synthid = await gemini_video_forensic_analysis(
+                file_path
+            )
+            results.append(
+                AnalysisTechnique(
+                    technique="Gemini AI Vision Forensic Analysis",
+                    result=self.score_to_result(gem_score),
+                    score=round(gem_score, 3),
+                    explanation=gem_expl,
+                )
+            )
+            self._gemini_model_guess = gem_model
+
+            if gem_synthid:
+                self._provenance_gaps.append("SynthID watermark traces detected by Gemini vision analysis")
+
+        except Exception as e:
+            logger.warning("Gemini video forensic analysis failed: %s", e)
+            results.append(
+                AnalysisTechnique(
+                    technique="Gemini AI Vision Forensic Analysis",
+                    result="INCONCLUSIVE",
+                    score=0.5,
+                    explanation=f"Gemini API unavailable: {e}",
+                )
+            )
+
+        # 6. SynthID Digital Watermark Detection (send first frame as image)
+        try:
+            import cv2
+            cap = cv2.VideoCapture(file_path)
+            ret, frame = cap.read()
+            cap.release()
+            if ret:
+                _, buf = cv2.imencode(".png", frame)
+                frame_bytes = buf.tobytes()
+                synthid_score, synthid_expl, watermark_found = await check_synthid_watermark(
+                    frame_bytes, "image/png"
+                )
+            else:
+                synthid_score, synthid_expl, watermark_found = 0.5, "Could not extract video frame for watermark analysis", False
+
+            results.append(
+                AnalysisTechnique(
+                    technique="SynthID Digital Watermark Detection",
+                    result=self.score_to_result(synthid_score),
+                    score=round(synthid_score, 3),
+                    explanation=synthid_expl,
+                )
+            )
+            if watermark_found:
+                self._provenance_gaps.append("Digital watermark (SynthID) positively identified in video frames")
+
+        except Exception as e:
+            logger.warning("SynthID video watermark check failed: %s", e)
+            results.append(
+                AnalysisTechnique(
+                    technique="SynthID Digital Watermark Detection",
+                    result="INCONCLUSIVE",
+                    score=0.5,
+                    explanation=f"SynthID check unavailable: {e}",
+                )
+            )
+
         # Estimate model fingerprint
         scores = [r.score for r in results]
         avg = sum(scores) / len(scores)
@@ -108,6 +183,11 @@ class VideoAnalyzer(BaseAnalyzer):
         return self._provenance_gaps
 
     def _estimate_fingerprint(self, file_bytes: bytes, avg_score: float):
+        # Prefer Gemini's model guess if available
+        if self._gemini_model_guess:
+            self._model_fingerprint = f"{self._gemini_model_guess} (identified by Gemini vision analysis)"
+            return
+
         if avg_score < 0.5:
             self._model_fingerprint = None
             return
