@@ -1,5 +1,6 @@
 """LUCID — FastAPI backend entrypoint."""
 
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +13,12 @@ from api.routes import analyze, history, report
 async def lifespan(app: FastAPI):
     # Startup: initialize database
     await init_db()
+
+    # Startup: pre-load BERT classifier (if dependencies available)
+    from forensics.bert_classifier import is_available, load_model
+    if is_available():
+        await asyncio.to_thread(load_model)
+
     yield
     # Shutdown: nothing to clean up
 

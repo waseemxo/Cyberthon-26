@@ -25,6 +25,15 @@ export async function analyzeFile(
   return response.data;
 }
 
+export async function analyzeText(
+  text: string,
+  onProgress?: (progress: number) => void
+): Promise<ForensicReport> {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const file = new File([blob], 'input.txt', { type: 'text/plain' });
+  return analyzeFile(file, onProgress);
+}
+
 export async function getHistory(): Promise<SessionHistoryItem[]> {
   const response = await api.get<SessionHistoryItem[]>('/history');
   return response.data;

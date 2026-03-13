@@ -23,7 +23,7 @@ const features = [
 ];
 
 export default function HomePage() {
-  const { analyze, isAnalyzing, uploadProgress, error } = useAnalysis();
+  const { analyze, analyzeTextInput, isAnalyzing, uploadProgress, error } = useAnalysis();
 
   return (
     <div className="space-y-12">
@@ -41,15 +41,16 @@ export default function HomePage() {
           </span>
         </h1>
         <p className="text-text-secondary max-w-xl mx-auto text-lg">
-          Upload any content — text, image, audio, or video — and get a detailed
+          Paste text or upload any content — image, audio, or video — and get a detailed
           forensic report on AI generation probability, model fingerprints, and
           provenance gaps.
         </p>
       </div>
 
-      {/* Upload Area */}
+      {/* Input Area */}
       <FileUpload
         onFileSelect={analyze}
+        onTextSubmit={analyzeTextInput}
         isAnalyzing={isAnalyzing}
         uploadProgress={uploadProgress}
       />

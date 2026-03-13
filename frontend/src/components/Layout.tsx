@@ -18,9 +18,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3 no-underline group">
-              <div className="w-9 h-9 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center group-hover:shadow-[0_0_12px_rgba(0,255,136,0.3)] transition-shadow">
-                <span className="text-primary-light font-mono font-bold text-sm">L</span>
-              </div>
+              <img
+                src="/lucid-logo.png"
+                alt="LUCID"
+                className="h-9 w-auto group-hover:drop-shadow-[0_0_8px_rgba(0,255,136,0.4)] transition-all"
+              />
               <div>
                 <span className="text-lg font-bold text-primary font-mono tracking-widest glow-text">
                   LUCID

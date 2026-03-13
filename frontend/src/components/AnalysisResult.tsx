@@ -21,6 +21,7 @@ import {
   Activity,
   Search,
   Terminal,
+  Brain,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ForensicReport, FileType, TechniqueResult } from '../types';
@@ -47,8 +48,22 @@ const TECHNIQUE_ICONS: Record<TechniqueResult, typeof AlertTriangle> = {
   CLEAN: CheckCircle,
 };
 
+function isBertTechnique(name: string): boolean {
+  const lower = name.toLowerCase();
+  return lower.includes('bert') || lower.includes('deep learning');
+}
+
 function getInterpretation(result: TechniqueResult, score: number, technique: string): string {
   const name = technique.toLowerCase();
+
+  if (name.includes('bert') || name.includes('deep learning')) {
+    if (result === 'SUSPICIOUS')
+      return `A fine-tuned BERT neural network classified this text as likely AI-generated with ${Math.round(score * 100)}% confidence. This deep learning model was trained on thousands of human and AI text samples and detects subtle statistical patterns invisible to rule-based analysis.`;
+    if (result === 'CLEAN')
+      return `A fine-tuned BERT neural network classified this text as likely human-written (score: ${Math.round(score * 100)}%). The model's learned representations of AI-generated text did not trigger for this content, supporting human authorship.`;
+    return `The BERT deep learning classifier returned an inconclusive result (score: ${Math.round(score * 100)}%). The text exhibits characteristics of both human and AI writing according to the neural network's learned patterns.`;
+  }
+
   if (result === 'SUSPICIOUS') {
     if (name.includes('metadata') || name.includes('exif'))
       return 'Metadata analysis found significant indicators of AI generation — missing or inconsistent EXIF data, absent camera information, or metadata patterns typical of AI tools.';
@@ -85,9 +100,7 @@ interface AnalysisResultProps {
 }
 
 export default function AnalysisResult({ report }: AnalysisResultProps) {
-  const [expandedTechniques, setExpandedTechniques] = useState<Set<number>>(
-    new Set(report.analysis_breakdown.map((_, i) => i))
-  );
+  const [expandedTechniques, setExpandedTechniques] = useState<Set<number>>(new Set());
   const [copiedHash, setCopiedHash] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
@@ -100,10 +113,6 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
     });
   };
 
-  const expandAll = () =>
-    setExpandedTechniques(new Set(report.analysis_breakdown.map((_, i) => i)));
-  const collapseAll = () => setExpandedTechniques(new Set());
-
   const copyToClipboard = (text: string, setter: (v: boolean) => void) => {
     navigator.clipboard.writeText(text);
     setter(true);
@@ -113,26 +122,14 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
   const FileIcon = FILE_ICONS[report.file_type];
   const riskColor = getRiskColor(report.risk_level);
 
-  const suspiciousCount = report.analysis_breakdown.filter(
-    (t) => t.result === 'SUSPICIOUS'
-  ).length;
-  const inconclusiveCount = report.analysis_breakdown.filter(
-    (t) => t.result === 'INCONCLUSIVE'
-  ).length;
-  const cleanCount = report.analysis_breakdown.filter(
-    (t) => t.result === 'CLEAN'
-  ).length;
-  const totalTechniques = report.analysis_breakdown.length;
+  // Separate BERT from other techniques
+  const bertTechnique = report.analysis_breakdown.find((t) => isBertTechnique(t.technique));
+  const otherTechniques = report.analysis_breakdown.filter((t) => !isBertTechnique(t.technique));
 
-  const highestScore = Math.max(
-    ...report.analysis_breakdown.map((t) => t.score)
-  );
-  const lowestScore = Math.min(
-    ...report.analysis_breakdown.map((t) => t.score)
-  );
-  const avgScore =
-    report.analysis_breakdown.reduce((s, t) => s + t.score, 0) /
-    totalTechniques;
+  const suspiciousCount = report.analysis_breakdown.filter((t) => t.result === 'SUSPICIOUS').length;
+  const inconclusiveCount = report.analysis_breakdown.filter((t) => t.result === 'INCONCLUSIVE').length;
+  const cleanCount = report.analysis_breakdown.filter((t) => t.result === 'CLEAN').length;
+  const totalTechniques = report.analysis_breakdown.length;
 
   const hashValue = report.file_hash.startsWith('sha256:')
     ? report.file_hash.slice(7)
@@ -140,7 +137,7 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* ── Case Header ── */}
+      {/* ── Case Header (compact) ── */}
       <div className="cyber-card p-4">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <div className="flex items-center gap-2">
@@ -149,574 +146,314 @@ export default function AnalysisResult({ report }: AnalysisResultProps) {
               Forensic Analysis Report
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="text-xs font-bold font-mono px-2.5 py-1 rounded uppercase tracking-wider border"
-              style={{
-                color: riskColor,
-                backgroundColor: `${riskColor}10`,
-                borderColor: `${riskColor}30`,
-              }}
-            >
-              {report.risk_level} RISK
-            </span>
-          </div>
+          <span
+            className="text-xs font-bold font-mono px-2.5 py-1 rounded uppercase tracking-wider border"
+            style={{
+              color: riskColor,
+              backgroundColor: `${riskColor}10`,
+              borderColor: `${riskColor}30`,
+            }}
+          >
+            {report.risk_level} RISK
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-surface rounded-lg p-3 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Hash className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-                Case ID
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <code className="text-xs font-mono text-primary-light">
-                {report.id}
-              </code>
-              <button
-                onClick={() => copyToClipboard(report.id, setCopiedId)}
-                className="text-text-muted hover:text-primary transition-colors"
-                title="Copy Case ID"
-              >
-                {copiedId ? (
-                  <Check className="w-3 h-3 text-success" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs font-mono">
+          <div className="bg-surface rounded-lg p-2.5 border border-border/50">
+            <span className="text-text-muted block text-[10px] uppercase tracking-wider mb-0.5">Case ID</span>
+            <div className="flex items-center gap-1">
+              <code className="text-primary-light">{report.id}</code>
+              <button onClick={() => copyToClipboard(report.id, setCopiedId)} className="text-text-muted hover:text-primary transition-colors">
+                {copiedId ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
               </button>
             </div>
           </div>
-
-          <div className="bg-surface rounded-lg p-3 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Clock className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-                Analyzed
-              </span>
-            </div>
-            <span className="text-xs font-mono text-text-secondary">
-              {formatDate(report.analyzed_at)}
-            </span>
+          <div className="bg-surface rounded-lg p-2.5 border border-border/50">
+            <span className="text-text-muted block text-[10px] uppercase tracking-wider mb-0.5">Analyzed</span>
+            <span className="text-text-secondary">{formatDate(report.analyzed_at)}</span>
           </div>
-
-          <div className="bg-surface rounded-lg p-3 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-1">
-              <FileType2 className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-                File Type
-              </span>
-            </div>
-            <span className="text-xs font-mono text-text-secondary uppercase">
-              {report.file_type}
-            </span>
+          <div className="bg-surface rounded-lg p-2.5 border border-border/50">
+            <span className="text-text-muted block text-[10px] uppercase tracking-wider mb-0.5">Type</span>
+            <span className="text-text-secondary uppercase">{report.file_type}</span>
           </div>
-
-          <div className="bg-surface rounded-lg p-3 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-1">
-              <HardDrive className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-                File Size
-              </span>
-            </div>
-            <span className="text-xs font-mono text-text-secondary">
-              {formatFileSize(report.file_size)} ({report.file_size.toLocaleString()} bytes)
-            </span>
+          <div className="bg-surface rounded-lg p-2.5 border border-border/50">
+            <span className="text-text-muted block text-[10px] uppercase tracking-wider mb-0.5">Size</span>
+            <span className="text-text-secondary">{formatFileSize(report.file_size)}</span>
           </div>
         </div>
 
-        {/* File identity */}
-        <div className="mt-3 bg-surface rounded-lg p-3 border border-border/50">
-          <div className="flex items-center gap-2 mb-2">
-            <FileIcon className="w-4 h-4 text-primary/60" />
-            <span className="text-sm font-semibold text-text-primary font-mono">
-              {report.file_name}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono shrink-0">
-              SHA-256:
-            </span>
-            <code className="text-[11px] font-mono text-text-secondary break-all">
-              {hashValue}
-            </code>
-            <button
-              onClick={() => copyToClipboard(hashValue, setCopiedHash)}
-              className="text-text-muted hover:text-primary transition-colors shrink-0"
-              title="Copy hash"
-            >
-              {copiedHash ? (
-                <Check className="w-3 h-3 text-success" />
-              ) : (
-                <Copy className="w-3 h-3" />
-              )}
-            </button>
-          </div>
+        <div className="mt-2 bg-surface rounded-lg p-2.5 border border-border/50 flex items-center gap-2">
+          <FileIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+          <span className="text-xs font-mono text-text-primary truncate">{report.file_name}</span>
+          <span className="text-text-muted mx-1">|</span>
+          <code className="text-[10px] font-mono text-text-muted truncate">{hashValue}</code>
+          <button onClick={() => copyToClipboard(hashValue, setCopiedHash)} className="text-text-muted hover:text-primary transition-colors shrink-0">
+            {copiedHash ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+          </button>
         </div>
       </div>
 
-      {/* ── Threat Assessment ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Score Gauge */}
-        <div className="cyber-card p-6 flex flex-col items-center justify-center">
+      {/* ── BERT Primary Verdict (Hero Card) ── */}
+      {bertTechnique && (() => {
+        const bertScore = Math.round(bertTechnique.score * 100);
+        const bertColor = getTechniqueColor(bertTechnique.result);
+        const BertResultIcon = TECHNIQUE_ICONS[bertTechnique.result];
+        return (
+          <div className="cyber-card p-0 overflow-hidden border-2" style={{ borderColor: `${bertColor}40` }}>
+            <div className="p-5 bg-gradient-to-r from-surface via-surface-light to-surface">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <Brain className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-primary font-mono uppercase tracking-wide">
+                    BERT Deep Learning Classifier
+                  </h2>
+                  <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">
+                    Primary Detection Engine — Weight: 5.0x
+                  </span>
+                </div>
+                <div className="ml-auto flex items-center gap-3">
+                  <span
+                    className="text-xs font-bold font-mono px-3 py-1.5 rounded-lg uppercase tracking-wider border"
+                    style={{ color: bertColor, backgroundColor: `${bertColor}12`, borderColor: `${bertColor}30` }}
+                  >
+                    <BertResultIcon className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+                    {bertTechnique.result}
+                  </span>
+                </div>
+              </div>
+
+              {/* Large score display */}
+              <div className="flex items-end gap-6 mb-4">
+                <div>
+                  <span className="text-5xl font-bold font-mono" style={{ color: bertColor }}>
+                    {bertScore}
+                  </span>
+                  <span className="text-xl font-mono text-text-muted">%</span>
+                </div>
+                <div className="flex-1 pb-2">
+                  <div className="relative h-4 rounded-full bg-surface-lighter overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-1000"
+                      style={{
+                        width: `${bertScore}%`,
+                        backgroundColor: bertColor,
+                        boxShadow: `0 0 16px ${bertColor}60`,
+                      }}
+                    />
+                    <div className="absolute top-0 bottom-0 left-[35%] w-px bg-text-muted/20" />
+                    <div className="absolute top-0 bottom-0 left-[65%] w-px bg-text-muted/20" />
+                  </div>
+                  <div className="flex justify-between text-[9px] font-mono text-text-muted mt-1">
+                    <span>0%</span>
+                    <span className="text-success">CLEAN</span>
+                    <span className="text-warning">INCONCLUSIVE</span>
+                    <span className="text-danger">SUSPICIOUS</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Interpretation */}
+              <div className="bg-surface/80 rounded-lg p-4 border border-primary/10">
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  {getInterpretation(bertTechnique.result, bertTechnique.score, bertTechnique.technique)}
+                </p>
+              </div>
+
+              {/* Raw explanation */}
+              <p className="text-xs text-text-muted mt-3 font-mono leading-relaxed">
+                <span className="text-primary/50">$ </span>
+                {bertTechnique.explanation}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Overall Confidence + Evidence (side by side) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="cyber-card p-5 flex flex-col items-center justify-center">
           <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono mb-3">
-            AI Confidence Score
+            Weighted Confidence Score
           </span>
-          <ScoreGauge
-            score={report.confidence_score}
-            label={report.overall_verdict}
-          />
+          <ScoreGauge score={report.confidence_score} label={report.overall_verdict} />
         </div>
 
-        {/* Evidence Summary */}
         <div className="cyber-card p-5">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <Activity className="w-4 h-4 text-primary/60" />
             <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
               Evidence Summary
             </span>
           </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-danger" />
-                <span className="text-sm text-text-secondary">Suspicious Indicators</span>
+          <div className="space-y-2">
+            {[
+              { label: 'Suspicious', count: suspiciousCount, cls: 'bg-danger', textCls: 'text-danger' },
+              { label: 'Inconclusive', count: inconclusiveCount, cls: 'bg-warning', textCls: 'text-warning' },
+              { label: 'Clean', count: cleanCount, cls: 'bg-success', textCls: 'text-success' },
+            ].map(({ label, count, cls, textCls }) => (
+              <div key={label} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${cls}`} />
+                  <span className="text-xs text-text-secondary">{label}</span>
+                </div>
+                <span className={`text-xs font-bold font-mono ${textCls}`}>{count}/{totalTechniques}</span>
               </div>
-              <span className="text-sm font-bold font-mono text-danger">
-                {suspiciousCount}/{totalTechniques}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-warning" />
-                <span className="text-sm text-text-secondary">Inconclusive</span>
-              </div>
-              <span className="text-sm font-bold font-mono text-warning">
-                {inconclusiveCount}/{totalTechniques}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-success" />
-                <span className="text-sm text-text-secondary">Clean</span>
-              </div>
-              <span className="text-sm font-bold font-mono text-success">
-                {cleanCount}/{totalTechniques}
-              </span>
-            </div>
+            ))}
+          </div>
+          <div className="mt-3 h-2 rounded-full overflow-hidden flex bg-surface-lighter">
+            {suspiciousCount > 0 && <div className="h-full bg-danger" style={{ width: `${(suspiciousCount / totalTechniques) * 100}%` }} />}
+            {inconclusiveCount > 0 && <div className="h-full bg-warning" style={{ width: `${(inconclusiveCount / totalTechniques) * 100}%` }} />}
+            {cleanCount > 0 && <div className="h-full bg-success" style={{ width: `${(cleanCount / totalTechniques) * 100}%` }} />}
           </div>
 
-          {/* Distribution bar */}
-          <div className="mt-4 h-2.5 rounded-full overflow-hidden flex bg-surface-lighter">
-            {suspiciousCount > 0 && (
-              <div
-                className="h-full bg-danger transition-all"
-                style={{ width: `${(suspiciousCount / totalTechniques) * 100}%` }}
-              />
-            )}
-            {inconclusiveCount > 0 && (
-              <div
-                className="h-full bg-warning transition-all"
-                style={{ width: `${(inconclusiveCount / totalTechniques) * 100}%` }}
-              />
-            )}
-            {cleanCount > 0 && (
-              <div
-                className="h-full bg-success transition-all"
-                style={{ width: `${(cleanCount / totalTechniques) * 100}%` }}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Score Statistics */}
-        <div className="cyber-card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Search className="w-4 h-4 text-primary/60" />
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-              Score Statistics
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-text-muted font-mono">Highest Score</span>
-                <span
-                  className="text-sm font-bold font-mono"
-                  style={{ color: getScoreColor(highestScore) }}
-                >
-                  {Math.round(highestScore * 100)}%
-                </span>
+          {/* Model fingerprint inline */}
+          {report.model_fingerprint && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Fingerprint className="w-3.5 h-3.5 text-primary/60" />
+                <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">Model Fingerprint</span>
               </div>
-              <div className="h-1.5 rounded-full bg-surface-lighter overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${highestScore * 100}%`,
-                    backgroundColor: getScoreColor(highestScore),
-                  }}
-                />
-              </div>
+              <p className="text-xs font-mono text-primary-light">{report.model_fingerprint}</p>
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-text-muted font-mono">Mean Score</span>
-                <span
-                  className="text-sm font-bold font-mono"
-                  style={{ color: getScoreColor(avgScore) }}
-                >
-                  {Math.round(avgScore * 100)}%
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-surface-lighter overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${avgScore * 100}%`,
-                    backgroundColor: getScoreColor(avgScore),
-                  }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-text-muted font-mono">Lowest Score</span>
-                <span
-                  className="text-sm font-bold font-mono"
-                  style={{ color: getScoreColor(lowestScore) }}
-                >
-                  {Math.round(lowestScore * 100)}%
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-surface-lighter overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${lowestScore * 100}%`,
-                    backgroundColor: getScoreColor(lowestScore),
-                  }}
-                />
-              </div>
-            </div>
-            <div className="pt-2 border-t border-border/50">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted font-mono">Weighted Confidence</span>
-                <span
-                  className="text-sm font-bold font-mono"
-                  style={{ color: getScoreColor(report.confidence_score) }}
-                >
-                  {Math.round(report.confidence_score * 100)}%
-                </span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* ── Model Fingerprint + Provenance ── */}
-      {(report.model_fingerprint || report.provenance_gaps.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {report.model_fingerprint && (
-            <div className="cyber-card p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Fingerprint className="w-4 h-4 text-primary" />
-                <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-                  Model Fingerprint
-                </span>
-              </div>
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                <p className="text-sm font-medium text-primary-light font-mono">
-                  {report.model_fingerprint}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {report.provenance_gaps.length > 0 && (
-            <div className="cyber-card p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertCircle className="w-4 h-4 text-warning" />
-                <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-                  Provenance Gaps ({report.provenance_gaps.length})
-                </span>
-              </div>
-              <ul className="space-y-2">
-                {report.provenance_gaps.map((gap, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-2 text-sm text-text-secondary bg-warning/5 border border-warning/15 rounded-lg p-2.5 font-mono text-xs"
-                  >
-                    <span className="text-warning shrink-0">!</span>
-                    {gap}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ── Forensic Summary ── */}
-      <div className="cyber-card p-5">
-        <div className="flex items-center gap-2 mb-3">
+      <div className="cyber-card p-4">
+        <div className="flex items-center gap-2 mb-2">
           <Eye className="w-4 h-4 text-primary/60" />
           <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
             Forensic Summary
           </span>
         </div>
-        <div className="bg-surface rounded-lg p-4 border border-primary/10">
-          <p className="text-sm text-text-secondary leading-relaxed font-mono">
-            <span className="text-primary/50">$ </span>
-            {report.forensic_summary}
-          </p>
-        </div>
+        <p className="text-sm text-text-secondary leading-relaxed font-mono">
+          <span className="text-primary/50">$ </span>
+          {report.forensic_summary}
+        </p>
       </div>
 
-      {/* ── Technique Score Heatmap ── */}
-      <div className="cyber-card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Activity className="w-4 h-4 text-primary/60" />
-          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-            Technique Score Matrix
-          </span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {report.analysis_breakdown.map((technique, index) => {
-            const color = getTechniqueColor(technique.result);
-            const scorePercent = Math.round(technique.score * 100);
-            return (
-              <div
-                key={index}
-                className="bg-surface rounded-lg p-3 border border-border/50 cursor-pointer hover:border-primary/30 transition-colors"
-                onClick={() => {
-                  const el = document.getElementById(`technique-${index}`);
-                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  setExpandedTechniques((prev) => new Set([...prev, index]));
-                }}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-mono text-text-secondary truncate mr-2">
-                    {technique.technique}
-                  </span>
-                  <span
-                    className="text-xs font-bold font-mono shrink-0"
-                    style={{ color }}
-                  >
-                    {scorePercent}%
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-surface-lighter overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${scorePercent}%`,
-                      backgroundColor: color,
-                      boxShadow: `0 0 6px ${color}40`,
-                    }}
-                  />
-                </div>
-                <div className="mt-1.5 flex items-center gap-1">
-                  <div
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="text-[10px] font-mono uppercase" style={{ color }}>
-                    {technique.result}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Detailed Technique Breakdown ── */}
-      <div className="cyber-card overflow-hidden">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-primary font-mono uppercase tracking-wide">
-              Detailed Analysis Breakdown
-            </h3>
-            <p className="text-xs text-text-muted mt-0.5 font-mono">
-              {totalTechniques} forensic techniques applied
-            </p>
+      {/* ── Supporting Techniques (compact) ── */}
+      {otherTechniques.length > 0 && (
+        <div className="cyber-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-text-secondary font-mono uppercase tracking-wide">
+                Supporting Analysis Techniques
+              </h3>
+              <p className="text-[10px] text-text-muted font-mono">
+                {otherTechniques.length} heuristic techniques
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={expandAll}
-              className="text-[10px] uppercase tracking-wider text-text-muted hover:text-primary transition-colors font-semibold font-mono"
-            >
-              Expand All
-            </button>
-            <span className="text-border">|</span>
-            <button
-              onClick={collapseAll}
-              className="text-[10px] uppercase tracking-wider text-text-muted hover:text-primary transition-colors font-semibold font-mono"
-            >
-              Collapse All
-            </button>
-          </div>
-        </div>
 
-        <div className="divide-y divide-border">
-          {report.analysis_breakdown.map((technique, index) => {
-            const isExpanded = expandedTechniques.has(index);
-            const color = getTechniqueColor(technique.result);
-            const ResultIcon = TECHNIQUE_ICONS[technique.result];
-            const scorePercent = Math.round(technique.score * 100);
-            const weight =
-              technique.technique.toLowerCase().includes('exif') || technique.technique.toLowerCase().includes('metadata')
+          <div className="divide-y divide-border/50">
+            {otherTechniques.map((technique) => {
+              const origIndex = report.analysis_breakdown.indexOf(technique);
+              const isExpanded = expandedTechniques.has(origIndex);
+              const color = getTechniqueColor(technique.result);
+              const ResultIcon = TECHNIQUE_ICONS[technique.result];
+              const scorePercent = Math.round(technique.score * 100);
+              const nameLower = technique.technique.toLowerCase();
+              const isExif = nameLower.includes('exif') || nameLower.includes('metadata');
+              const weight = isExif
                 ? '2.0x'
-                : technique.result === 'SUSPICIOUS' ? '1.5x' : '1.0x';
+                : technique.result === 'SUSPICIOUS'
+                  ? '1.5x'
+                  : technique.result === 'CLEAN'
+                    ? '1.3x'
+                    : '1.0x';
 
-            return (
-              <div key={index} id={`technique-${index}`}>
-                <button
-                  onClick={() => toggleTechnique(index)}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-surface-lighter transition-colors text-left"
-                >
-                  {/* Index badge */}
-                  <span className="text-[10px] font-mono text-primary/40 w-5 shrink-0">
-                    #{index + 1}
-                  </span>
-
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${color}15` }}
+              return (
+                <div key={origIndex} id={`technique-${origIndex}`}>
+                  <button
+                    onClick={() => toggleTechnique(origIndex)}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-surface-lighter/50 transition-colors text-left"
                   >
-                    <ResultIcon className="w-3.5 h-3.5" style={{ color }} />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary font-mono truncate">
-                      {technique.technique}
-                    </p>
-                  </div>
-
-                  {/* Score + bar */}
-                  <div className="hidden sm:flex items-center gap-3 w-40">
-                    <div className="flex-1 h-2 rounded-full bg-surface-lighter overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${scorePercent}%`,
-                          backgroundColor: color,
-                        }}
-                      />
-                    </div>
-                    <span
-                      className="text-xs font-mono font-bold w-10 text-right"
-                      style={{ color }}
+                    <div
+                      className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${color}15` }}
                     >
-                      {scorePercent}%
+                      <ResultIcon className="w-3 h-3" style={{ color }} />
+                    </div>
+
+                    <span className="text-xs font-mono text-text-secondary flex-1 min-w-0 truncate">
+                      {technique.technique}
                     </span>
-                  </div>
 
-                  {/* Result badge */}
-                  <span
-                    className="text-[10px] font-bold font-mono px-2 py-0.5 rounded uppercase shrink-0"
-                    style={{
-                      color,
-                      backgroundColor: `${color}12`,
-                    }}
-                  >
-                    {technique.result}
-                  </span>
+                    <div className="hidden sm:flex items-center gap-2 w-28">
+                      <div className="flex-1 h-1.5 rounded-full bg-surface-lighter overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${scorePercent}%`, backgroundColor: color }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold w-8 text-right" style={{ color }}>
+                        {scorePercent}%
+                      </span>
+                    </div>
 
-                  {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-text-muted shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-text-muted shrink-0" />
-                  )}
-                </button>
+                    <span
+                      className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded uppercase shrink-0"
+                      style={{ color, backgroundColor: `${color}10` }}
+                    >
+                      {technique.result}
+                    </span>
 
-                {isExpanded && (
-                  <div className="px-5 pb-4 animate-fade-in">
-                    <div className="ml-12 space-y-3">
-                      {/* Findings */}
-                      <div className="bg-surface border border-border/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-                            Findings
-                          </span>
-                          <div
-                            className="h-px flex-1"
-                            style={{ backgroundColor: `${color}20` }}
-                          />
-                        </div>
-                        <p className="text-sm text-text-secondary leading-relaxed">
+                    {isExpanded
+                      ? <ChevronUp className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                      : <ChevronDown className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                    }
+                  </button>
+
+                  {isExpanded && (
+                    <div className="px-4 pb-3 animate-fade-in">
+                      <div className="ml-7 space-y-2">
+                        <p className="text-xs text-text-secondary leading-relaxed">
                           {technique.explanation}
                         </p>
-                      </div>
-
-                      {/* What this means */}
-                      <div className="bg-surface border border-primary/10 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[10px] uppercase tracking-wider text-primary/60 font-semibold font-mono">
-                            What This Means
-                          </span>
-                          <div className="h-px flex-1 bg-primary/10" />
-                        </div>
-                        <p className="text-sm text-text-secondary leading-relaxed">
+                        <p className="text-xs text-text-muted leading-relaxed italic">
                           {getInterpretation(technique.result, technique.score, technique.technique)}
                         </p>
-                      </div>
-
-                      {/* Technical detail bar */}
-                      <div className="bg-surface border border-border/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
-                            Technical Detail
-                          </span>
-                          <div className="h-px flex-1 bg-border/30" />
-                        </div>
-                        {/* Score bar with thresholds */}
-                        <div className="relative h-3 rounded-full bg-surface-lighter overflow-hidden mb-2">
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{
-                              width: `${scorePercent}%`,
-                              backgroundColor: color,
-                              boxShadow: `0 0 8px ${color}40`,
-                            }}
-                          />
-                          {/* Threshold markers */}
-                          <div className="absolute top-0 bottom-0 left-[35%] w-px bg-text-muted/30" title="Clean threshold (0.35)" />
-                          <div className="absolute top-0 bottom-0 left-[65%] w-px bg-text-muted/30" title="Suspicious threshold (0.65)" />
-                        </div>
-                        <div className="flex items-center justify-between text-[9px] font-mono text-text-muted mb-3">
-                          <span>0%</span>
-                          <span className="text-success">CLEAN &lt;35%</span>
-                          <span className="text-warning">INCONCLUSIVE</span>
-                          <span className="text-danger">&gt;65% SUSPICIOUS</span>
-                          <span>100%</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-[10px] font-mono text-text-muted">
-                          <span>
-                            SCORE: <span style={{ color }} className="font-bold">{technique.score.toFixed(3)}</span>
-                          </span>
-                          <span>
-                            RESULT: <span style={{ color }} className="font-bold">{technique.result}</span>
-                          </span>
-                          <span>
-                            WEIGHT: <span className="font-bold text-text-secondary">{weight}</span>
-                          </span>
+                        <div className="flex items-center gap-3 text-[9px] font-mono text-text-muted">
+                          <span>SCORE: <span style={{ color }} className="font-bold">{technique.score.toFixed(3)}</span></span>
+                          <span>RESULT: <span style={{ color }} className="font-bold">{technique.result}</span></span>
+                          <span>WEIGHT: <span className="font-bold text-text-secondary">{weight}</span></span>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Provenance Gaps ── */}
+      {report.provenance_gaps.length > 0 && (
+        <div className="cyber-card p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="w-4 h-4 text-warning" />
+            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold font-mono">
+              Provenance Gaps ({report.provenance_gaps.length})
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {report.provenance_gaps.map((gap, i) => (
+              <span key={i} className="text-[10px] font-mono text-warning bg-warning/5 border border-warning/15 rounded px-2 py-1">
+                ! {gap}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Actions ── */}
-      <div className="flex items-center justify-center gap-4 pt-2 pb-4">
+      <div className="flex items-center justify-center gap-4 pt-1 pb-4">
         <a
           href={getReportPdfUrl(report.id)}
           download

@@ -111,6 +111,7 @@ def build_report(
     # Weighted average score — suspicious techniques get more weight,
     # and EXIF/metadata techniques carry extra forensic importance
     EXIF_KEYWORDS = ("exif", "metadata")
+    BERT_KEYWORDS = ("bert", "deep learning")
 
     if not breakdown:
         avg_score = 0.5
@@ -119,8 +120,18 @@ def build_report(
         weighted_sum = 0
         for t in breakdown:
             name_lower = t.technique.lower()
+            is_bert = any(kw in name_lower for kw in BERT_KEYWORDS)
             is_exif = any(kw in name_lower for kw in EXIF_KEYWORDS)
-            weight = 2.0 if is_exif else (1.5 if t.result == "SUSPICIOUS" else (1.3 if t.result == "CLEAN" else 1.0))
+            if is_bert:
+                weight = 5.0
+            elif is_exif:
+                weight = 2.0
+            elif t.result == "SUSPICIOUS":
+                weight = 1.5
+            elif t.result == "CLEAN":
+                weight = 1.3
+            else:
+                weight = 1.0
             weighted_sum += t.score * weight
             total_weight += weight
         avg_score = weighted_sum / total_weight

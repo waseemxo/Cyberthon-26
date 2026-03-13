@@ -1,5 +1,7 @@
 """Text forensic analyzer — orchestrates all text analysis techniques."""
 
+import asyncio
+
 from analyzers.base import BaseAnalyzer
 from models.schemas import AnalysisTechnique
 from forensics.stylometry import (
@@ -52,6 +54,22 @@ class TextAnalyzer(BaseAnalyzer):
                     result=self.score_to_result(score),
                     score=round(score, 3),
                     explanation=explanation,
+                )
+            )
+
+        # ── BERT Deep Learning Classification ──
+        from forensics.bert_classifier import classify_text
+
+        bert_result = await asyncio.to_thread(classify_text, text)
+        if bert_result is not None:
+            bert_score, bert_explanation = bert_result
+            scores.append(bert_score)
+            results.append(
+                AnalysisTechnique(
+                    technique="Deep Learning Analysis (BERT)",
+                    result=self.score_to_result(bert_score),
+                    score=round(bert_score, 3),
+                    explanation=bert_explanation,
                 )
             )
 
