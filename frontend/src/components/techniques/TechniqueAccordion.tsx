@@ -11,7 +11,7 @@ interface TechniqueAccordionProps {
 
 function getWeight(technique: AnalysisTechnique): string {
   const name = technique.technique.toLowerCase();
-  if (name.includes('bert') || name.includes('deep learning')) return '5.0x';
+  if (name.includes('bert') || name.includes('deep learning') || name.includes('lstm')) return '5.0x';
   if (name.includes('gemini')) return '4.0x';
   if (name.includes('exif') || name.includes('metadata')) return '2.0x';
   if (technique.result === 'SUSPICIOUS') return '1.5x';

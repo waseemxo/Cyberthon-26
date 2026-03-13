@@ -1,6 +1,7 @@
 """Audio forensic analyzer — orchestrates all audio analysis techniques."""
 
 import asyncio
+import logging
 
 from analyzers.base import BaseAnalyzer
 from models.schemas import AnalysisTechnique
@@ -11,6 +12,9 @@ from forensics.spectrogram import (
     silence_pattern_analysis,
     temporal_jitter_analysis,
 )
+from forensics.lstm_audio_classifier import classify_audio
+
+logger = logging.getLogger(__name__)
 
 
 class AudioAnalyzer(BaseAnalyzer):
@@ -104,6 +108,21 @@ class AudioAnalyzer(BaseAnalyzer):
                 )
             )
 
+        # 5. LSTM Deep Learning Classifier (runs in thread pool — CPU-bound)
+        lstm_result = await asyncio.to_thread(_safe_lstm_call, file_path)
+        if lstm_result is not None:
+            lstm_score, lstm_expl = lstm_result
+            results.append(
+                AnalysisTechnique(
+                    technique="LSTM Deep Learning Audio Classifier",
+                    result=self.score_to_result(lstm_score),
+                    score=round(lstm_score, 3),
+                    explanation=lstm_expl,
+                )
+            )
+        else:
+            logger.info("LSTM audio classifier unavailable or failed — skipping")
+
         # Estimate model fingerprint
         scores = [r.score for r in results]
         avg = sum(scores) / len(scores)
@@ -143,3 +162,12 @@ def _safe_call(func, file_path, y, sr):
         return func(file_path, y=y, sr=sr)
     except Exception as e:
         return (None, str(e))
+
+
+def _safe_lstm_call(file_path: str):
+    """Run the LSTM classifier, returning None on failure or unavailability."""
+    try:
+        return classify_audio(file_path)
+    except Exception as e:
+        logger.exception("LSTM audio classification failed")
+        return None

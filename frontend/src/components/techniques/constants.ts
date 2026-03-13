@@ -9,7 +9,7 @@ export const TECHNIQUE_ICONS: Record<TechniqueResult, typeof AlertTriangle> = {
 
 export function isBertTechnique(name: string): boolean {
   const lower = name.toLowerCase();
-  return lower.includes('bert') || lower.includes('deep learning');
+  return lower.includes('bert') || lower.includes('deep learning') || lower.includes('lstm');
 }
 
 export function isGeminiTechnique(name: string): boolean {
@@ -18,6 +18,14 @@ export function isGeminiTechnique(name: string): boolean {
 
 export function getInterpretation(result: TechniqueResult, score: number, technique: string): string {
   const name = technique.toLowerCase();
+
+  if (name.includes('lstm')) {
+    if (result === 'SUSPICIOUS')
+      return 'The LSTM neural network classified this audio as AI-generated (deepfake). This deep learning model was trained on MFCC features extracted from real and synthetic audio, detecting temporal patterns characteristic of AI speech synthesis.';
+    if (result === 'CLEAN')
+      return 'The LSTM neural network classified this audio as authentic human speech. The MFCC feature patterns across audio segments are consistent with natural recordings.';
+    return 'The LSTM deep learning classifier returned an inconclusive result. The audio exhibits characteristics of both natural and AI-generated speech according to the neural network\'s learned patterns.';
+  }
 
   if (name.includes('bert') || name.includes('deep learning')) {
     if (result === 'SUSPICIOUS')

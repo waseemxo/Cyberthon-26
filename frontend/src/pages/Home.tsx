@@ -55,7 +55,7 @@ const mediaTypes = [
     icon: Music,
     label: 'Audio',
     color: 'text-amber-400 border-amber-400/20 bg-amber-400/5',
-    techniques: ['TTS Marker Detection', 'Mel-Spectrogram Analysis', 'Pitch & Amplitude Jitter', 'Silence Patterns'],
+    techniques: ['LSTM Deepfake Classifier', 'Mel-Spectrogram Analysis', 'Pitch & Amplitude Jitter', 'Silence Patterns'],
   },
   {
     icon: Video,

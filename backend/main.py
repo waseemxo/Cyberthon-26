@@ -23,6 +23,11 @@ async def lifespan(app: FastAPI):
     if is_available():
         await asyncio.to_thread(load_model)
 
+    # Startup: pre-load LSTM audio classifier (if dependencies available)
+    from forensics.lstm_audio_classifier import is_available as lstm_available, load_model as lstm_load
+    if lstm_available():
+        await asyncio.to_thread(lstm_load)
+
     # Startup: configure Gemini analyzer (if SDK and API key available)
     from forensics.gemini_analyzer import is_available as gemini_available, configure as gemini_configure
     if gemini_available():
