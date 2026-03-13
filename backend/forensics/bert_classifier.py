@@ -106,10 +106,9 @@ def classify_text(text: str) -> tuple[float, str] | None:
         label = "Human-Written"
 
     explanation = (
-        f"BERT deep learning classifier predicts '{label}' with "
-        f"{confidence:.1%} confidence. This model was fine-tuned on a large "
-        f"corpus of human and AI-generated text using LoRA adapters on "
-        f"bert-base-cased. Analysis is based on the first ~512 tokens."
+        f"Classification: {label} | Confidence: {confidence:.1%} | "
+        f"Fine-tuned BERT (bert-base-cased) with LoRA adapters, trained on "
+        f"human and AI-generated text. Based on first ~512 tokens."
     )
 
     return score, explanation

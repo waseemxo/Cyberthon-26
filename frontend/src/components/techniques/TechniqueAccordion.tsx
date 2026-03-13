@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { AnalysisTechnique } from '../../types';
-import { TECHNIQUE_ICONS, getInterpretation } from './constants';
+import { TECHNIQUE_ICONS, getInterpretation, isBertTechnique } from './constants';
 import { getTechniqueColor } from '../../utils/helpers';
 
 interface TechniqueAccordionProps {
@@ -11,10 +11,18 @@ interface TechniqueAccordionProps {
 
 function getWeight(technique: AnalysisTechnique): string {
   const name = technique.technique.toLowerCase();
+  if (name.includes('bert') || name.includes('deep learning')) return '5.0x';
+  if (name.includes('gemini')) return '4.0x';
   if (name.includes('exif') || name.includes('metadata')) return '2.0x';
   if (technique.result === 'SUSPICIOUS') return '1.5x';
   if (technique.result === 'CLEAN') return '1.3x';
   return '1.0x';
+}
+
+/** Extract the classification label from BERT explanation string. */
+function parseBertLabel(explanation: string): string | null {
+  const match = explanation.match(/Classification:\s*([^|]+)/);
+  return match ? match[1].trim() : null;
 }
 
 export default function TechniqueAccordion({ techniques, label = 'Supporting Analysis Techniques' }: TechniqueAccordionProps) {
@@ -49,6 +57,8 @@ export default function TechniqueAccordion({ techniques, label = 'Supporting Ana
           const ResultIcon = TECHNIQUE_ICONS[technique.result];
           const scorePercent = Math.round(technique.score * 100);
           const weight = getWeight(technique);
+          const isClassifier = isBertTechnique(technique.technique);
+          const bertLabel = isClassifier ? parseBertLabel(technique.explanation) : null;
 
           return (
             <div key={i}>
@@ -67,17 +77,27 @@ export default function TechniqueAccordion({ techniques, label = 'Supporting Ana
                   {technique.technique}
                 </span>
 
-                <div className="hidden sm:flex items-center gap-2 w-28">
-                  <div className="flex-1 h-1.5 rounded-full bg-surface-lighter overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${scorePercent}%`, backgroundColor: color }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-mono font-bold w-8 text-right" style={{ color }}>
-                    {scorePercent}%
+                {/* BERT: show label instead of percentage bar */}
+                {isClassifier && bertLabel ? (
+                  <span
+                    className="hidden sm:inline text-[10px] font-mono font-bold px-2 py-0.5 rounded border"
+                    style={{ color, backgroundColor: `${color}10`, borderColor: `${color}25` }}
+                  >
+                    {bertLabel}
                   </span>
-                </div>
+                ) : (
+                  <div className="hidden sm:flex items-center gap-2 w-28">
+                    <div className="flex-1 h-1.5 rounded-full bg-surface-lighter overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${scorePercent}%`, backgroundColor: color }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold w-8 text-right" style={{ color }}>
+                      {scorePercent}%
+                    </span>
+                  </div>
+                )}
 
                 <span
                   className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded uppercase shrink-0"
@@ -102,7 +122,9 @@ export default function TechniqueAccordion({ techniques, label = 'Supporting Ana
                       {getInterpretation(technique.result, technique.score, technique.technique)}
                     </p>
                     <div className="flex items-center gap-3 text-[9px] font-mono text-text-muted">
-                      <span>SCORE: <span style={{ color }} className="font-bold">{technique.score.toFixed(3)}</span></span>
+                      {!isClassifier && (
+                        <span>SCORE: <span style={{ color }} className="font-bold">{technique.score.toFixed(3)}</span></span>
+                      )}
                       <span>RESULT: <span style={{ color }} className="font-bold">{technique.result}</span></span>
                       <span>WEIGHT: <span className="font-bold text-text-secondary">{weight}</span></span>
                     </div>

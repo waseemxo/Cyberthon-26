@@ -21,10 +21,10 @@ export function getInterpretation(result: TechniqueResult, score: number, techni
 
   if (name.includes('bert') || name.includes('deep learning')) {
     if (result === 'SUSPICIOUS')
-      return `A fine-tuned BERT neural network classified this text as likely AI-generated with ${Math.round(score * 100)}% confidence. This deep learning model was trained on thousands of human and AI text samples and detects subtle statistical patterns invisible to rule-based analysis.`;
+      return 'The BERT neural network classified this text as AI-generated. This deep learning model was fine-tuned on thousands of human and AI text samples and detects subtle statistical patterns invisible to rule-based analysis.';
     if (result === 'CLEAN')
-      return `A fine-tuned BERT neural network classified this text as likely human-written (score: ${Math.round(score * 100)}%). The model's learned representations of AI-generated text did not trigger for this content, supporting human authorship.`;
-    return `The BERT deep learning classifier returned an inconclusive result (score: ${Math.round(score * 100)}%). The text exhibits characteristics of both human and AI writing according to the neural network's learned patterns.`;
+      return 'The BERT neural network classified this text as human-written. The model\'s learned representations of AI-generated text did not trigger for this content, supporting human authorship.';
+    return 'The BERT deep learning classifier returned an inconclusive result. The text exhibits characteristics of both human and AI writing according to the neural network\'s learned patterns.';
   }
 
   if (name.includes('gemini')) {
