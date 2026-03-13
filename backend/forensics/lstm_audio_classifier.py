@@ -1,7 +1,7 @@
 """LSTM-based deepfake audio classifier — singleton model loader + inference.
 
-Uses an LSTM neural network trained on MFCC features to detect AI-generated
-(deepfake) audio.  Accepts .wav, .flac, .mp3, .ogg files.
+Uses an LSTM neural network (ONNX Runtime) trained on MFCC features to detect
+AI-generated (deepfake) audio.  Accepts .wav, .flac, .mp3, .ogg files.
 """
 
 import logging
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Module-level singletons (mirroring bert_classifier.py pattern)
 # ---------------------------------------------------------------------------
-_model = None
+_session = None
 _scaler = None
 _available: bool | None = None
 
@@ -35,16 +35,17 @@ def is_available() -> bool:
     if _available is not None:
         return _available
     try:
-        import tensorflow  # noqa: F401
+        import onnxruntime  # noqa: F401
         import joblib  # noqa: F401
         import librosa  # noqa: F401
 
         model_dir = _get_model_dir()
-        h5 = model_dir / "lstm_deepfake_audio.h5"
-        scaler = model_dir / "scaler.joblib"
-        if not h5.exists() or not scaler.exists():
+        onnx_path = model_dir / "deepfake_audio.onnx"
+        scaler_path = model_dir / "scaler.joblib"
+        if not onnx_path.exists() or not scaler_path.exists():
             logger.warning(
-                "LSTM audio model files missing (expected %s and %s)", h5, scaler
+                "LSTM audio model files missing (expected %s and %s)",
+                onnx_path, scaler_path,
             )
             _available = False
         else:
@@ -56,32 +57,35 @@ def is_available() -> bool:
 
 
 def load_model() -> bool:
-    """Load the Keras LSTM model and scikit-learn scaler.  Idempotent."""
-    global _model, _scaler
+    """Load the ONNX LSTM model and scikit-learn scaler.  Idempotent."""
+    global _session, _scaler
 
-    if _model is not None:
+    if _session is not None:
         return True
 
     if not is_available():
         return False
 
     try:
-        import tensorflow as tf
+        import onnxruntime as ort
         import joblib
 
         model_dir = _get_model_dir()
 
-        logger.info("Loading LSTM audio deepfake model from %s ...", model_dir)
-        _model = tf.keras.models.load_model(str(model_dir / "lstm_deepfake_audio.h5"))
+        logger.info("Loading LSTM audio deepfake ONNX model from %s ...", model_dir)
+        _session = ort.InferenceSession(
+            str(model_dir / "deepfake_audio.onnx"),
+            providers=["CPUExecutionProvider"],
+        )
 
         logger.info("Loading MFCC scaler ...")
         _scaler = joblib.load(str(model_dir / "scaler.joblib"))
 
-        logger.info("LSTM audio classifier loaded successfully")
+        logger.info("LSTM audio classifier loaded successfully (ONNX Runtime)")
         return True
     except Exception:
         logger.exception("Failed to load LSTM audio classifier")
-        _model = None
+        _session = None
         _scaler = None
         return False
 
@@ -93,12 +97,12 @@ def classify_audio(file_path: str) -> tuple[float, str] | None:
     Returns ``(score, explanation)`` where *score* is 0..1 (higher = more
     likely AI/deepfake), or ``None`` if the model is not loaded.
     """
-    if _model is None or _scaler is None:
+    if _session is None or _scaler is None:
         return None
 
     import librosa
 
-    # --- feature extraction (same pipeline as audio/predict.py) ---
+    # --- feature extraction (same pipeline as training) ---
     try:
         y, _ = librosa.load(file_path, sr=_SR, mono=True)
     except Exception as e:
@@ -137,8 +141,9 @@ def classify_audio(file_path: str) -> tuple[float, str] | None:
     scaled = _scaler.transform(flat)
     chunks = scaled.reshape(-1, chunks.shape[1], chunks.shape[2])
 
-    # --- inference ---
-    preds = _model.predict(chunks, verbose=0)
+    # --- inference via ONNX Runtime ---
+    input_name = _session.get_inputs()[0].name
+    preds = _session.run(None, {input_name: chunks})[0]
     avg_score = float(preds.mean())
 
     label = "AI-Generated" if avg_score >= 0.5 else "Human-Audio"

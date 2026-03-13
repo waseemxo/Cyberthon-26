@@ -64,16 +64,6 @@ credentials.json
 logs/
 *.log
 
-# =========================
-# ML Models & Large Files
-# =========================
-*.pt
-*.pth
-*.onnx
-*.h5
-*.pkl
-*.bin
-models/cache/
 
 # =========================
 # Uploads & Temp

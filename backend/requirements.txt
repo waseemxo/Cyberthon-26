@@ -20,8 +20,8 @@ transformers>=4.36.0
 peft>=0.7.0
 safetensors>=0.4.0
 
-# Deep Learning LSTM Audio Classifier
-tensorflow>=2.15.0
+# Deep Learning LSTM Audio Classifier (ONNX Runtime)
+onnxruntime>=1.17.0
 scikit-learn>=1.3.0
 joblib>=1.3.0
 
