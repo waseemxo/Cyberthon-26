@@ -112,6 +112,7 @@ def build_report(
     # and EXIF/metadata techniques carry extra forensic importance
     EXIF_KEYWORDS = ("exif", "metadata")
     BERT_KEYWORDS = ("bert", "deep learning")
+    GEMINI_KEYWORDS = ("gemini",)
 
     if not breakdown:
         avg_score = 0.5
@@ -121,9 +122,12 @@ def build_report(
         for t in breakdown:
             name_lower = t.technique.lower()
             is_bert = any(kw in name_lower for kw in BERT_KEYWORDS)
+            is_gemini = any(kw in name_lower for kw in GEMINI_KEYWORDS)
             is_exif = any(kw in name_lower for kw in EXIF_KEYWORDS)
             if is_bert:
                 weight = 5.0
+            elif is_gemini:
+                weight = 4.0
             elif is_exif:
                 weight = 2.0
             elif t.result == "SUSPICIOUS":

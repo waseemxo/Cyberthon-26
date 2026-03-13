@@ -104,6 +104,21 @@ class VideoAnalyzer(BaseAnalyzer):
                 )
             )
 
+        # ── Gemini Video Analysis (via File API) ──
+        from forensics.gemini_analyzer import analyze_video as gemini_analyze_video
+
+        gemini_result = await asyncio.to_thread(gemini_analyze_video, file_path)
+        if gemini_result is not None:
+            gemini_score, gemini_explanation = gemini_result
+            results.append(
+                AnalysisTechnique(
+                    technique="Gemini Video Analysis",
+                    result=self.score_to_result(gemini_score),
+                    score=round(gemini_score, 3),
+                    explanation=gemini_explanation,
+                )
+            )
+
         # Estimate model fingerprint
         scores = [r.score for r in results]
         avg = sum(scores) / len(scores)

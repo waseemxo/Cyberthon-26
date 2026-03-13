@@ -83,6 +83,21 @@ class ImageAnalyzer(BaseAnalyzer):
             )
         )
 
+        # ── Gemini Multimodal Image Analysis ──
+        from forensics.gemini_analyzer import analyze_image as gemini_analyze_image
+
+        gemini_result = await asyncio.to_thread(gemini_analyze_image, file_bytes)
+        if gemini_result is not None:
+            gemini_score, gemini_explanation = gemini_result
+            results.append(
+                AnalysisTechnique(
+                    technique="Gemini Multimodal Analysis",
+                    result=self.score_to_result(gemini_score),
+                    score=round(gemini_score, 3),
+                    explanation=gemini_explanation,
+                )
+            )
+
         # Estimate model fingerprint
         scores = [r.score for r in results]
         avg = sum(scores) / len(scores)

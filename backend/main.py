@@ -19,6 +19,14 @@ async def lifespan(app: FastAPI):
     if is_available():
         await asyncio.to_thread(load_model)
 
+    # Startup: configure Gemini analyzer (if SDK and API key available)
+    import os
+    from forensics.gemini_analyzer import is_available as gemini_available, configure as gemini_configure
+    if gemini_available():
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            gemini_configure(api_key)
+
     yield
     # Shutdown: nothing to clean up
 

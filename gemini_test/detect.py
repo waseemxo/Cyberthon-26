@@ -4,7 +4,7 @@ import os
 
 # 1. Configure your API key
 # Replace "YOUR_API_KEY" with your actual Gemini API key, or use an environment variable.
-API_KEY = "AIzaSyA0kmDsXJPTK-HGdPIJtEVe0d-KiY4_4B8" 
+API_KEY = "YOUR_API_KEY" 
 genai.configure(api_key=API_KEY)
 
 # 2. Choose the model (Gemini 1.5 Flash is fast, free, and supports images)
