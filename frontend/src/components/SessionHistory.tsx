@@ -26,9 +26,9 @@ export default function SessionHistory({ items }: SessionHistoryProps) {
     return (
       <div className="text-center py-16">
         <Clock className="w-12 h-12 text-text-muted mx-auto mb-4 opacity-50" />
-        <p className="text-lg text-text-secondary mb-1">No analyses yet</p>
-        <p className="text-sm text-text-muted">
-          Upload a file to start your forensic analysis
+        <p className="text-lg text-text-secondary mb-1 font-mono">No analyses yet</p>
+        <p className="text-sm text-text-muted font-mono">
+          <span className="text-primary/50">&gt;</span> Upload a file to start your forensic analysis
         </p>
       </div>
     );
@@ -46,19 +46,19 @@ export default function SessionHistory({ items }: SessionHistoryProps) {
           <Link
             key={item.id}
             to={`/analysis/${item.id}`}
-            className="flex items-center gap-4 p-4 bg-surface-light border border-border rounded-xl hover:bg-surface-lighter hover:border-primary/30 transition-all group no-underline"
+            className="flex items-center gap-4 p-4 cyber-card hover:border-primary/30 transition-all group no-underline"
           >
             {/* File type icon */}
-            <div className="w-10 h-10 rounded-lg bg-surface-lighter flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-surface-lighter border border-border/50 flex items-center justify-center shrink-0">
               <FileIcon className="w-5 h-5 text-text-secondary" />
             </div>
 
             {/* File info */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text-primary truncate">
+              <p className="text-sm font-medium text-text-primary font-mono truncate">
                 {item.file_name}
               </p>
-              <p className="text-xs text-text-muted">
+              <p className="text-xs text-text-muted font-mono">
                 {formatDate(item.analyzed_at)}
               </p>
             </div>
@@ -66,8 +66,8 @@ export default function SessionHistory({ items }: SessionHistoryProps) {
             {/* Score */}
             <div className="flex items-center gap-3">
               <span
-                className="text-xs font-bold px-2 py-0.5 rounded-md"
-                style={{ color: riskColor, backgroundColor: `${riskColor}15` }}
+                className="text-xs font-bold font-mono px-2 py-0.5 rounded-md border"
+                style={{ color: riskColor, backgroundColor: `${riskColor}10`, borderColor: `${riskColor}30` }}
               >
                 {item.risk_level}
               </span>
@@ -77,7 +77,7 @@ export default function SessionHistory({ items }: SessionHistoryProps) {
               >
                 {percentage}%
               </span>
-              <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-primary-light transition-colors" />
+              <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-primary transition-colors" />
             </div>
           </Link>
         );

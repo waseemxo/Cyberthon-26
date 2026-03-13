@@ -4,6 +4,7 @@ import type { ForensicReport, SessionHistoryItem } from '../types';
 const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
+  timeout: 120_000, // 2 minutes — analysis with Gemini can be slow
 });
 
 export async function analyzeFile(
@@ -23,6 +24,15 @@ export async function analyzeFile(
   });
 
   return response.data;
+}
+
+export async function analyzeText(
+  text: string,
+  onProgress?: (progress: number) => void
+): Promise<ForensicReport> {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const file = new File([blob], 'input.txt', { type: 'text/plain' });
+  return analyzeFile(file, onProgress);
 }
 
 export async function getHistory(): Promise<SessionHistoryItem[]> {
