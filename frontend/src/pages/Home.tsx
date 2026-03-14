@@ -114,7 +114,7 @@ export default function HomePage() {
           LUCID performs deep forensic analysis across text, images, audio, and video
           using <span className="text-primary font-medium">23 detection techniques</span> — from
           BERT classifiers and FFT frequency analysis to LSTM audio deepfake detection and
-          Gemini multimodal inspection.
+          SynthID watermark inspection.
         </p>
       </div>
 
