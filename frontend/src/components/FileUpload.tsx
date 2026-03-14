@@ -200,10 +200,10 @@ export default function FileUpload({
                 )}
               </p>
               <p className="text-sm text-text-muted">
-                Supports images, audio, and video files
+                Supports text, images, audio, and video files
               </p>
               <div className="flex items-center justify-center gap-3 mt-6">
-                {(['image', 'audio', 'video'] as FileType[]).map((type) => {
+                {(['text', 'image', 'audio', 'video'] as FileType[]).map((type) => {
                   const Icon = FILE_TYPE_ICONS[type];
                   return (
                     <div
