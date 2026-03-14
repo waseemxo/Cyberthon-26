@@ -86,7 +86,7 @@ export default function FileUpload({
             onClick={() => setMode('text')}
             className={`relative z-10 flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-mono font-medium transition-all ${
               mode === 'text'
-                ? 'text-surface bg-primary shadow-[0_0_12px_rgba(0,255,136,0.2)]'
+                ? 'text-surface bg-primary shadow-[0_0_12px_rgba(255,140,66,0.2)]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
@@ -97,7 +97,7 @@ export default function FileUpload({
             onClick={() => setMode('file')}
             className={`relative z-10 flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-mono font-medium transition-all ${
               mode === 'file'
-                ? 'text-surface bg-primary shadow-[0_0_12px_rgba(0,255,136,0.2)]'
+                ? 'text-surface bg-primary shadow-[0_0_12px_rgba(255,140,66,0.2)]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
@@ -119,7 +119,7 @@ export default function FileUpload({
               className="h-full bg-primary rounded-full transition-all duration-300"
               style={{
                 width: `${uploadProgress}%`,
-                boxShadow: '0 0 8px rgba(0, 255, 136, 0.4)',
+                boxShadow: '0 0 8px rgba(255, 140, 66, 0.4)',
               }}
             />
           </div>
@@ -137,7 +137,7 @@ export default function FileUpload({
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="Paste or type text to analyze for AI generation..."
-              className="w-full h-48 bg-surface border-2 border-border rounded-2xl p-5 text-sm text-text-primary font-mono resize-none focus:outline-none focus:border-primary/50 focus:shadow-[0_0_16px_rgba(0,255,136,0.1)] transition-all placeholder:text-text-muted/50"
+              className="w-full h-48 bg-surface border-2 border-border rounded-2xl p-5 text-sm text-text-primary font-mono resize-none focus:outline-none focus:border-primary/50 focus:shadow-[0_0_16px_rgba(255,140,66,0.1)] transition-all placeholder:text-text-muted/50"
             />
             <span className="absolute bottom-3 right-4 text-[10px] font-mono text-text-muted">
               {textInput.length} chars
@@ -146,7 +146,7 @@ export default function FileUpload({
           <button
             onClick={handleTextSubmit}
             disabled={textInput.trim().length === 0}
-            className="w-full py-3.5 rounded-xl font-mono font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 hover:shadow-[0_0_16px_rgba(0,255,136,0.15)]"
+            className="w-full py-3.5 rounded-xl font-mono font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 hover:shadow-[0_0_16px_rgba(255,140,66,0.15)]"
           >
             <span className="text-primary/60">&gt; </span>
             Analyze Text

@@ -9,11 +9,11 @@ import {
   Brain,
   Microscope,
   ShieldCheck,
-  ArrowDown,
   Sparkles,
   Waves,
   Eye,
   Clock,
+  AudioLines,
 } from 'lucide-react';
 import FileUpload from '../components/FileUpload';
 import { useAnalysis } from '../hooks/useAnalysis';
@@ -43,25 +43,25 @@ const mediaTypes = [
     icon: FileText,
     label: 'Text',
     color: 'text-blue-400 border-blue-400/20 bg-blue-400/5',
-    techniques: ['BERT AI Classifier', 'Stylometric Analysis', 'Perplexity & Burstiness', 'Watermark Detection'],
+    techniques: ['Deep Learning Analysis (BERT)', 'Perplexity Estimation', 'Burstiness Analysis', 'Vocabulary Richness (TTR)', 'N-gram Repetition Analysis', 'Punctuation Pattern Analysis', 'Unicode Watermark Detection'],
   },
   {
     icon: Image,
     label: 'Image',
     color: 'text-emerald-400 border-emerald-400/20 bg-emerald-400/5',
-    techniques: ['EXIF Metadata Inspection', 'FFT Frequency Analysis', 'Error Level Analysis (ELA)', 'Gemini Multimodal'],
+    techniques: ['Gemini Multimodal Analysis', 'EXIF & Metadata Inspection', 'Frequency Domain Analysis (FFT)', 'Error Level Analysis (ELA)', 'Pixel Statistical Analysis', 'Color Histogram Analysis'],
   },
   {
     icon: Music,
     label: 'Audio',
     color: 'text-amber-400 border-amber-400/20 bg-amber-400/5',
-    techniques: ['LSTM Deepfake Classifier', 'Mel-Spectrogram Analysis', 'Pitch & Amplitude Jitter', 'Silence Patterns'],
+    techniques: ['LSTM Deep Learning Classifier', 'Audio Metadata Inspection', 'Mel-Spectrogram Analysis', 'Pitch & Amplitude Jitter Analysis', 'Silence Pattern Analysis'],
   },
   {
     icon: Video,
     label: 'Video',
     color: 'text-purple-400 border-purple-400/20 bg-purple-400/5',
-    techniques: ['Temporal Consistency', 'Face Landmark Analysis', 'Optical Flow Detection', 'Gemini Video Analysis'],
+    techniques: ['Gemini Video Analysis', 'Video Container Metadata Inspection', 'Temporal Consistency Analysis', 'Face Landmark & Deepfake Analysis', 'Optical Flow Analysis'],
   },
 ];
 
@@ -76,7 +76,7 @@ const steps = [
     icon: Microscope,
     step: '02',
     title: 'Forensic Analysis',
-    description: '20+ techniques run in parallel: ML classifiers, signal processing, and metadata inspection.',
+    description: '23 techniques run in parallel: ML classifiers, signal processing, and metadata inspection.',
   },
   {
     icon: Eye,
@@ -112,8 +112,8 @@ export default function HomePage() {
         </h1>
         <p className="text-text-secondary max-w-2xl mx-auto text-lg leading-relaxed">
           LUCID performs deep forensic analysis across text, images, audio, and video
-          using <span className="text-primary font-medium">20+ detection techniques</span> — from
-          BERT classifiers and FFT frequency analysis to Error Level Analysis and
+          using <span className="text-primary font-medium">23 detection techniques</span> — from
+          BERT classifiers and FFT frequency analysis to LSTM audio deepfake detection and
           Gemini multimodal inspection.
         </p>
       </div>
@@ -225,6 +225,15 @@ export default function HomePage() {
               </div>
               <p className="text-[11px] text-text-muted leading-relaxed">
                 Fine-tuned BERT model with Low-Rank Adaptation for binary AI text detection. Weighted 5x in final scoring.
+              </p>
+            </div>
+            <div className="rounded-lg bg-surface-lighter border border-border p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <AudioLines className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-xs font-bold text-text-primary font-mono">LSTM Audio Classifier</span>
+              </div>
+              <p className="text-[11px] text-text-muted leading-relaxed">
+                LSTM neural network (ONNX Runtime) trained on MFCC features for audio deepfake detection. Weighted 5x in final scoring.
               </p>
             </div>
             <div className="rounded-lg bg-surface-lighter border border-border p-3">

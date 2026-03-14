@@ -11,6 +11,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Background Orbs */}
+      <div className="orb" style={{ width: 300, height: 300, background: '#FF8C42', top: '-5%', left: '-5%' }} />
+      <div className="orb" style={{ width: 250, height: 250, background: '#06B6D4', bottom: '5%', right: '-3%', animationDelay: '-7s' }} />
+      <div className="orb" style={{ width: 150, height: 150, background: '#FF8C42', bottom: '20%', left: '40%', animationDelay: '-13s' }} />
+
       {/* Header */}
       <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none scanline-overlay opacity-30" />
@@ -21,7 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <img
                 src="/lucid-logo.png"
                 alt="LUCID"
-                className="h-9 w-auto group-hover:drop-shadow-[0_0_8px_rgba(0,255,136,0.4)] transition-all"
+                className="h-9 w-auto group-hover:drop-shadow-[0_0_8px_rgba(255,140,66,0.4)] transition-all"
               />
               <div>
                 <span className="text-lg font-bold text-primary font-mono tracking-widest glow-text">

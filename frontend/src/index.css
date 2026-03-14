@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #00ff88;
-  --color-primary-light: #33ffaa;
-  --color-primary-dark: #00cc6a;
-  --color-accent: #00d4ff;
-  --color-accent-light: #33ddff;
-  --color-surface: #0a0e14;
-  --color-surface-light: #111820;
-  --color-surface-lighter: #1a2332;
-  --color-border: #1e2d3d;
+  --color-primary: #FF8C42;
+  --color-primary-light: #FFa668;
+  --color-primary-dark: #E07030;
+  --color-accent: #06B6D4;
+  --color-accent-light: #22D3EE;
+  --color-surface: #0B0D12;
+  --color-surface-light: #12151C;
+  --color-surface-lighter: #1A1E28;
+  --color-border: #1E222E;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
   --color-success: #10b981;
@@ -30,14 +30,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Grid background */
+/* Grid background — subtle orange tint */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(255, 140, 66, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 140, 66, 0.025) 1px, transparent 1px);
   background-size: 40px 40px;
   pointer-events: none;
   z-index: 0;
@@ -63,14 +63,14 @@ body::before {
   border-radius: 3px;
 }
 
-/* Animations */
+/* ── Animations ── */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.1); }
-  50% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.25); }
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 140, 66, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(255, 140, 66, 0.25); }
 }
 @keyframes spin-slow {
   from { transform: rotate(0deg); }
@@ -79,6 +79,12 @@ body::before {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+@keyframes float-orb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -20px) scale(1.05); }
+  50% { transform: translate(-15px, 15px) scale(0.95); }
+  75% { transform: translate(20px, 10px) scale(1.02); }
 }
 
 .animate-fade-in {
@@ -100,15 +106,17 @@ body::before {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 255, 136, 0.03) 2px,
-    rgba(0, 255, 136, 0.03) 4px
+    rgba(255, 140, 66, 0.025) 2px,
+    rgba(255, 140, 66, 0.025) 4px
   );
 }
 
-/* Cyber card with glow border */
+/* ── Glassmorphism cyber card ── */
 .cyber-card {
-  background: var(--color-surface-light);
-  border: 1px solid var(--color-border);
+  background: rgba(18, 21, 28, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 140, 66, 0.08);
   border-radius: 0.75rem;
   position: relative;
 }
@@ -117,7 +125,7 @@ body::before {
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), transparent 50%, rgba(0, 212, 255, 0.1));
+  background: linear-gradient(135deg, rgba(255, 140, 66, 0.15), transparent 50%, rgba(6, 182, 212, 0.1));
   z-index: -1;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
@@ -132,5 +140,16 @@ body::before {
 
 /* Glow text effect */
 .glow-text {
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5), 0 0 20px rgba(0, 255, 136, 0.2);
+  text-shadow: 0 0 10px rgba(255, 140, 66, 0.5), 0 0 20px rgba(255, 140, 66, 0.2);
+}
+
+/* ── Animated background orbs ── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+  animation: float-orb 20s ease-in-out infinite;
 }
